@@ -27,7 +27,7 @@ def get_users():
     return jsonify(users_list), 200
 
 
-@user_bp.route("/users/get_token", methods=['GET'])
+@user_bp.route("/users/get_token", methods=['POST'])
 def get_token():
     data = request.json
     username = data.get("username")
