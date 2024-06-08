@@ -1,8 +1,11 @@
+from flask_cors import cross_origin, CORS
+
 import app.main.model.user as user
 from app.main.service import user_service
 from flask import Blueprint, request, jsonify
 
 user_bp = Blueprint('user', __name__)
+CORS(user_bp)
 
 @user_bp.route("/users", methods=['POST'])
 def create_user():
@@ -27,15 +30,18 @@ def get_users():
     return jsonify(users_list), 200
 
 
-@user_bp.route("/users/get_token", methods=['POST'])
+@user_bp.route("/users/get_token", methods=['POST', 'OPTIONS'])
+@cross_origin()
 def get_token():
     data = request.json
     username = data.get("username")
     password = data.get("password")
 
     token = user_service.get_token(username, password)
+
     if token is not None:
-        return jsonify({"access_token": token}), 200
+        response = jsonify({"access_token": token})
+        return response, 200
     return jsonify({}), 401
 
 
