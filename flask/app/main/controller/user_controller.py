@@ -1,4 +1,5 @@
 from flask_cors import cross_origin, CORS
+from mysql.connector import IntegrityError
 
 import app.main.model.user as user
 from app.main.service import user_service
@@ -7,7 +8,9 @@ from flask import Blueprint, request, jsonify
 user_bp = Blueprint('user', __name__)
 CORS(user_bp)
 
+
 @user_bp.route("/users", methods=['POST'])
+@cross_origin()
 def create_user():
     data = request.json
     username = data.get('username')
@@ -29,6 +32,21 @@ def get_users():
     users_list = [{"username": user.username} for user in users]
     return jsonify(users_list), 200
 
+@user_bp.route("/users/info", methods=['POST'])
+@cross_origin()
+def get_user_info():
+    data = request.json
+    access_token = data.get("access_token")
+    current_user = user_service.get_user_by_token(access_token)
+    print("uname: " + current_user.username)
+
+    if current_user is None:
+        return jsonify({"error": "invalid token"}), 401
+
+    return jsonify({
+        "username": current_user.username,
+        "privileges": "User"
+    }), 200
 
 @user_bp.route("/users/get_token", methods=['POST', 'OPTIONS'])
 @cross_origin()
@@ -46,22 +64,27 @@ def get_token():
 
 
 @user_bp.route("/users/delete", methods=['DELETE'])
+@cross_origin()
 def delete():
     data = request.json
-    username = data.get("username")
-    user_service.delete_user(username)
+    access_token = data.get("access_token")
+    user_service.delete_user(user_service.get_user_by_token(access_token))
     return jsonify({}), 200
 
 
 @user_bp.route("/users/change_username", methods=['PATCH'])
+@cross_origin()
 def change_username():
     data = request.json
     new_username = data.get("new_username")
     access_token = data.get("access_token")
     try:
         user_service.update_user_uname(new_username, access_token)
+    except IntegrityError:
+        return jsonify({"error": "Username is already in use"}), 409
     except ValueError:
-        return jsonify({"error": "User doesn't exist or is not authenticated properly"}), 401
+        print(access_token)
+        return jsonify({"error": "Wrong authentication token"}), 401
     return jsonify({}), 200
 
 

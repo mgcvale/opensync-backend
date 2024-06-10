@@ -32,7 +32,7 @@ class User:
 
         if kwargs.get("new"):
             self._salt = gensalt()
-            self._password_hash = hash_password(kwargs.get("password"), self._salt)
+            self._password_hash = hash_password(kwargs.get("password"), self._salt).decode('utf-8')
             self._access_token = secrets.token_hex(16)
         else:
             self._salt = base64.b64decode(kwargs.get("salt") + "==")
