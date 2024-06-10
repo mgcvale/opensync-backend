@@ -38,7 +38,6 @@ def get_user_info():
     data = request.json
     access_token = data.get("access_token")
     current_user = user_service.get_user_by_token(access_token)
-    print("uname: " + current_user.username)
 
     if current_user is None:
         return jsonify({"error": "invalid token"}), 401
