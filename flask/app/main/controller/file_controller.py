@@ -47,7 +47,6 @@ def upload_files():
     if user is None:
         return jsonify({"error": "User Not Found"}), 401
     filedir = os.path.join(current_app.config["UPLOAD_FOLDER"], user.username)
-    filedir = ""
     files = request.files.getlist('files')
     for f in files:
         print(f.filename)
