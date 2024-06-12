@@ -1,4 +1,6 @@
 import base64
+import os
+import shutil
 import traceback
 
 from flask import current_app
@@ -57,6 +59,7 @@ def delete_user(user):
         cursor.execute("delete from user where username=%s", [user.username])
         mysql.connection.commit()
         User.objects.remove(user)
+        shutil.rmtree(os.path.join(current_app.config["UPLOAD_FOLDER"], user.username))
     finally:
         cursor.close()
 
@@ -92,8 +95,10 @@ def update_user_uname(new_username, token):
     try:
         cursor.execute("update user set username=%s where access_token=%s", (new_username, token))
         mysql.connection.commit()
+        os.rename(os.path.join(current_app.config["UPLOAD_FOLDER"], user.username), os.path.join(current_app.config["UPLOAD_FOLDER"], new_username))
         user.username = new_username
     except Exception as e:
+        print(e)
         raise IntegrityError("User Conflict Error")
     finally:
         cursor.close()

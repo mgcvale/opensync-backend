@@ -2,7 +2,7 @@ import json
 from os.path import isfile, join
 
 from dotenv import load_dotenv
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, send_file
 from flask_cors import CORS, cross_origin
 from werkzeug.utils import secure_filename
 
@@ -34,7 +34,7 @@ def get_files():
     load_dotenv()
     userdir = os.path.join(current_app.config['UPLOAD_FOLDER'], user.username)
     userfiles = [f for f in os.listdir(userdir) if isfile(join(userdir, f))]
-
+    print(json.dumps(userfiles))
     return jsonify({"files": json.dumps(userfiles)}), 200
 
 
@@ -47,7 +47,7 @@ def upload_files():
     if user is None:
         return jsonify({"error": "User Not Found"}), 401
     filedir = os.path.join(current_app.config["UPLOAD_FOLDER"], user.username)
-    files = request.files.getlist('files')
+    files = request.files.getlist('images')
     for f in files:
         print(f.filename)
         filename = secure_filename(f.filename)
@@ -57,9 +57,14 @@ def upload_files():
     return jsonify({}), 200
 
 
-@file_bp.route("/files/download", methods=['POST'])
+@file_bp.route("/files/download/<access_token>/<image>", methods=['GET'])
 @cross_origin()
-def download_files():
-    return None
+def download_files(access_token, image):
 
+    user = user_service.get_user_by_token(access_token)
+    if user is None:
+        return jsonify({"error": "User Not Found"}), 401
+    filedir = os.path.join(current_app.config["UPLOAD_FOLDER"], user.username)
+    filepath = os.path.join(filedir, image)
 
+    return send_file(filepath, mimetype="image/png")

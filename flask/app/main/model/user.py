@@ -1,8 +1,11 @@
 import base64
+import os
 import string
 
 import bcrypt
 import secrets
+
+from flask import current_app
 
 
 def gensalt():
@@ -34,6 +37,7 @@ class User:
             self._salt = gensalt()
             self._password_hash = hash_password(kwargs.get("password"), self._salt).decode('utf-8')
             self._access_token = secrets.token_hex(16)
+            os.mkdir(os.path.join(current_app.config['UPLOAD_FOLDER'], self.username))
         else:
             self._salt = base64.b64decode(kwargs.get("salt") + "==")
 
