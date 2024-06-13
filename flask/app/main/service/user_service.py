@@ -4,7 +4,7 @@ import shutil
 import traceback
 
 from flask import current_app
-from mysql.connector import DatabaseError, IntegrityError
+from mysql.connector import IntegrityError
 
 from app.main.model.user import User
 from app.main.model.user import hash_password
