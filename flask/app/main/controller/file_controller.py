@@ -54,3 +54,18 @@ def download_files(access_token, image):
     return send_file(filepath, mimetype="image/png")
 
 
+@file_bp.route("/files/delete", methods=['DELETE'])
+@cross_origin()
+def delete_file():
+    data = request.json
+    access_token = data.get('access_token')
+    filename = data.get('filename')
+
+    user = user_service.get_user_by_token(access_token)
+    if user is None:
+        return jsonify({"error": "User Not Found"}), 401
+
+    file = os.path.join(current_app.config["UPLOAD_FOLDER"], user.username)
+    file = os.path.join(file, filename)
+    os.remove(file)
+    return jsonify({}), 200
