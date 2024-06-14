@@ -37,7 +37,11 @@ class User:
             self._salt = gensalt()
             self._password_hash = hash_password(kwargs.get("password"), self._salt).decode('utf-8')
             self._access_token = secrets.token_hex(16)
-            os.mkdir(os.path.join(current_app.config['UPLOAD_FOLDER'], self.username))
+            userdir = os.path.join(current_app.config['UPLOAD_FOLDER'], self.username)
+            os.mkdir(userdir)
+            previewdir = os.path.join(userdir, current_app.config['PREVIEW_FOLDER'])
+            os.mkdir(previewdir)
+
         else:
             self._salt = base64.b64decode(kwargs.get("salt") + "==")
 
