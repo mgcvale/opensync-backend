@@ -3,12 +3,10 @@ import io
 import os
 from os.path import isfile, join
 
-from PIL import Image
 from dotenv import load_dotenv
 from flask import jsonify, current_app
 from werkzeug.utils import secure_filename
 
-from app.main.model import user
 from app.main.util import image_utils
 
 ALLOWED_EXTENSIONS = {'png', 'jpeg', 'jpg'}

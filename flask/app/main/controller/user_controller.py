@@ -94,6 +94,7 @@ def change_password():
     access_token = data.get("access_token")
     try:
         user_service.update_user_pwd(new_password, access_token)
+        user_service.regen_token(access_token)
     except ValueError as e:
         print(e.__str__())
         return jsonify({"error": "User doesn't exist or is not authenticated properly"}), 401
