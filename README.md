@@ -10,17 +10,20 @@ Isso poderá ser feito criando um ambiente virtual do zero, ou utilizando uma ID
 
 Aqui está um exemplo de criacão de um .venv:
 `git clone https://github.com/mgcvale/hyprsync-backend`
+
 `cd hyprsync-backend/flask`
-# criar o venv
+
+criar o venv
 `python3 -m venv venv`
 
-# ativar o venv
+ativar o venv
 No windows:
 `venv\Scripts\activate`
+
 No Linux/macOS:
 `source venv/bin/activate`
 
-# instalar os pacotes necessários
+instalar os pacotes necessários
 `pip install -r requirements.txt`
 
 Após a criacão do servidor, é preciso configurar duas coisas: o banco de dados e as configuracões locais do servidor.
