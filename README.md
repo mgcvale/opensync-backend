@@ -1,7 +1,7 @@
 # Hyprsync
 
 Um sistema de backup de imagens open-source e cross-plataform.
-Desenvolvido em Python, utilizando Flask em uma API RESTful
+Desenvolvido em Python, utilizando Flask em uma API RESTful.
 
 # Instrucoes para instalacao/utilizacao
 
