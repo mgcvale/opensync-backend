@@ -1,7 +1,7 @@
 # Hyprsync
 
 Um sistema de backup de imagens open-source e cross-plataform.
-Desenvolvido em Python, utilizando Flask para criar uma API REST
+Desenvolvido em Python, utilizando Flask em uma API RESTful
 
 # Instrucoes para instalacao/utilizacao
 
@@ -9,23 +9,24 @@ Para rodar o servidor, é necessário ter um ambiente python (venv, por exemplo)
 Isso poderá ser feito criando um ambiente virtual do zero, ou utilizando uma IDE, como o PyCharm, para facilitar o processo.
 
 Aqui está um exemplo de criacão de um .venv:
-`git clone https://github.com/mgcvale/hyprsync-backend`
 
-`cd hyprsync-backend/flask`
+Clonar o repositório e entrar na fonte do código
+```
+git clone https://github.com/mgcvale/hyprsync-backend
+cd hyprsync-backend/flask
+```
+Criar o venv e instalar os requirements
+``` shell
+python3 -m venv venv
+# No windows:
+venv\Scripts\activate
 
-criar o venv
-`python3 -m venv venv`
+# No Linux/macOS:
+source venv/bin/activate
 
-ativar o venv
-No windows:
-`venv\Scripts\activate`
-
-No Linux/macOS:
-`source venv/bin/activate`
-
-instalar os pacotes necessários
-`pip install -r requirements.txt`
-
+# instalar os pacotes necessários
+pip install -r requirements.txt
+```
 Após a criacão do servidor, é preciso configurar duas coisas: o banco de dados e as configuracões locais do servidor.
 
 ## Configuracoes Locais:
@@ -33,7 +34,7 @@ Após a criacão do servidor, é preciso configurar duas coisas: o banco de dado
 As duas configuracões que você precisará mudar estão localizadas em dois arquivos: um deles é o .env, e o outro é o config.py.
 O arquivo .env deverá ser criado na pasta /flask/app. Nele, você precisará setar as seguintes variáveis, da seguinte forma:
 
-```
+``` python
 # File: /flask/app/.env
 
 # database
@@ -46,7 +47,7 @@ MYSQL_PASSWORD = "senha" # senha para o usuário do banco de dados
 USER_FILES_DIR = "/home/mgcv/hyprsync/user_uploads" # pasta em que os arquivos que o servidor receber dos usuários serão armazenados. IMPORTANTE: A pasta que você colocar aqui deverá existir no seu computador, pois o código não criará ela para você, caso ela não exista.
 ```
 
-Já o arquivo config.py já foi criado, e está localizado na pasta /flask. A única configuracão que você deverá trocar nele será a UPLOAD_FOLDER, que deverá ser IGUAL à USER_FILES_DIR no arquivo .env.
+Já o arquivo config.py já vem criado, e está localizado na pasta /flask. A única configuracão que você deverá trocar nele será a UPLOAD_FOLDER, que deverá ser IGUAL à USER_FILES_DIR no arquivo .env.
 ```python
 # File: /flask/config.py
 
@@ -65,6 +66,7 @@ class Config:
 
 O Banco de dados utilizado no projeto foi o MySql/MariaDB.
 Após ter colocado os dados do seu BD no arquivo .env, você deverá criar uma única tabela `user`, com os seguintes campos:
+```
 +---------------+-------------+------+-----+---------+----------------+
 | Field         | Type        | Null | Key | Default | Extra          |
 +---------------+-------------+------+-----+---------+----------------+
@@ -74,6 +76,7 @@ Após ter colocado os dados do seu BD no arquivo .env, você deverá criar uma �
 | access_token  | varchar(45) | YES  |     | NULL    |                |
 | salt          | varchar(64) | YES  |     | NULL    |                |
 +---------------+-------------+------+-----+---------+----------------+
+```
 Aqui está um código para criar esta tabela:
 ```sql
 CREATE TABLE user (
@@ -86,6 +89,7 @@ CREATE TABLE user (
 );
 ```
 
-Após ter feito tudo isso, inicie o servidor com `flask run`
+Após ter feito tudo isso, inicie o servidor com `flask run`.
+
 Caso você encontre algum problema, sinta-se livre em abrir uma issue no github.
 As instrucões para uso do frontend (WEB) estão no readme do repositório do mesmo: https://github.com/mgcvale/hyprsync-frontend
