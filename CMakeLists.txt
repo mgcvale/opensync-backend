@@ -6,7 +6,6 @@ find_package(PkgConfig REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(cJSON REQUIRED)
 
-pkg_check_modules(MICROHTTPD REQUIRED libmicrohttpd)
 add_library(mongoose STATIC external/mongoose/mongoose.c)
 
 add_executable(hyprsync-backend
@@ -34,8 +33,7 @@ add_executable(hyprsync-backend
     util/util.c
 )
 
-target_include_directories(hyprsync-backend PRIVATE ${MICROHTTPD_INCLUDE_DIRS})
-target_link_libraries(hyprsync-backend ${MICROHTTPD_LIBRARIES} ${SQLite3_LIBRARIES} ${CJSON_LIBRARIES})
+target_link_libraries(hyprsync-backend ${SQLite3_LIBRARIES} ${CJSON_LIBRARIES})
 target_include_directories(hyprsync-backend PRIVATE external/mongoose)
 
 install(TARGETS hyprsync-backend RUNTIME DESTINATION bin)
