@@ -4,3 +4,7 @@ hyprsync-backend
 
 # KDE
 *.kdev4
+.kdev4/
+
+# db
+*.db
