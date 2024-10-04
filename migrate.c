@@ -2,10 +2,10 @@
 #include <stdio.h>
 
 int migrate() {
-
     sqlite3 *db;
     char* err_msg = 0;
     int rc;
+    const char* sql = "create table if not exists user (id integer primary key, username varchar(64), unique(username))";
 
     printf("[MIGRATION] starting migration...\n");
     printf("---->DB Creation (1/2)<----\n");
@@ -21,7 +21,6 @@ int migrate() {
 
     printf("---->Table creation<----\n");
 
-    const char* sql = "create table if not exists user (id smallint primary key, username varchar(64))";
     rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
 
     if (rc != SQLITE_OK) {

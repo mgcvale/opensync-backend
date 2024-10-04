@@ -1,0 +1,6 @@
+# C and CMake
+/build/
+hyprsync-backend
+
+# KDE
+*.kdev4

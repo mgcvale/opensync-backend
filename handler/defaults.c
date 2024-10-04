@@ -22,3 +22,7 @@ void default_500(struct mg_connection* conn)
 {
     mg_http_reply(conn, 500, "Content-Type: application/json\r\n", "{\"message\": \"INTERNAL_SERVER_ERROR\"}");
 }
+
+void default_409(struct mg_connection* conn) {
+    mg_http_reply(conn, 500, "Content-Type: application/json\r\n", "{\"message\": \"CONFLICT\"}");
+}

@@ -1,8 +1,0 @@
-/home/mgcv/projetos-pessoais/hyprsync/hyprsync-backend/build/CMakeFiles/mongoose.dir
-/home/mgcv/projetos-pessoais/hyprsync/hyprsync-backend/build/CMakeFiles/hyprsync-backend.dir
-/home/mgcv/projetos-pessoais/hyprsync/hyprsync-backend/build/CMakeFiles/edit_cache.dir
-/home/mgcv/projetos-pessoais/hyprsync/hyprsync-backend/build/CMakeFiles/rebuild_cache.dir
-/home/mgcv/projetos-pessoais/hyprsync/hyprsync-backend/build/CMakeFiles/list_install_components.dir
-/home/mgcv/projetos-pessoais/hyprsync/hyprsync-backend/build/CMakeFiles/install.dir
-/home/mgcv/projetos-pessoais/hyprsync/hyprsync-backend/build/CMakeFiles/install/local.dir
-/home/mgcv/projetos-pessoais/hyprsync/hyprsync-backend/build/CMakeFiles/install/strip.dir

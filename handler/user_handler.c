@@ -10,8 +10,14 @@
 #include "../service/database.h"
 
 void root_user_handler(struct mg_connection* conn, struct mg_http_message *http_msg) {
-    if (!mg_strcmp(http_msg->uri, mg_str("/user/create"))) {
+    if (mg_strcmp(http_msg->uri, mg_str("/user/create")) == 0) {
         return user_create_handler(conn, http_msg);
+    }
+    if (mg_strcmp(http_msg->uri, mg_str("/user/getall")) == 0) {
+        return user_getall_handler(conn, http_msg);
+    }
+    if (mg_strcmp(http_msg->uri, mg_str("/user/delete")) == 0) {
+        return user_delete_handler(conn, http_msg);
     }
 
     return default_404(conn);
@@ -28,29 +34,85 @@ void user_create_handler(struct mg_connection* conn, struct mg_http_message *htt
     const cJSON *username = NULL;
 
     if (user_data == NULL) {
-        fprintf(stderr, "Error reading json in /user/create");
+        MG_ERROR(("Error reading json in /user/create"));
         return default_400(conn);
     }
 
     username = cJSON_GetObjectItemCaseSensitive(user_data, "username");
     if (!cJSON_IsString(username) || username->valuestring == NULL) {
-        fprintf(stderr, "Error reading `username` field in json in /user/create");
+        MG_ERROR(("Error reading `username` field in json in /user/create"));
         return default_400(conn);
     }
 
-    User *user = create_user(username->valuestring, strlen(username->valuestring));
+    User *user = create_new_user(username->valuestring, strlen(username->valuestring));
     rc = add_user(user);
 
+    if (rc == ERR_DB_CONFLICT) {
+        MG_ERROR(("Conflict when creating user in /user/create"));
+        return default_409(conn);
+    }
     if (rc != OK) {
-        fprintf(stderr, "Error connecting to database in /user/create");
+        MG_ERROR(("Error connecting to database in /user/create"));
         return default_500(conn);
     }
 
     cJSON_Delete(user_data);
+    free_user(user);
     return default_200(conn);
 }
 
+void user_getall_handler(struct mg_connection* conn, struct mg_http_message* http_msg) {
+    if (mg_strcmp(http_msg->method, mg_str("GET"))) {
+        return default_405(conn);
+    }
 
+    int rc;
+    User_list *users = NULL;
+    rc = get_users_as_list(&users);
+    if (rc != OK) {
+        MG_ERROR(("Error connecting to database in /user/getall"));
+        return default_500(conn);
+    }
+
+    cJSON *list = jsonify_list(*users);
+    const char *response = cJSON_PrintUnformatted(list);
+
+    mg_http_reply(conn, 200, "Content-Type: application/json\r\n", "%s", response);
+    cJSON_Delete(list);
+    free(users);
+}
+
+void user_delete_handler(struct mg_connection *conn, struct mg_http_message *http_msg) {
+    if (mg_strcmp(http_msg->method, mg_str("DELETE"))) {
+        return default_405(conn);
+    }
+
+    int rc;
+    cJSON *user_data = cJSON_ParseWithLength(http_msg->body.buf, http_msg->body.len);
+    if (user_data == NULL) {
+        MG_ERROR(("Error parsing JSON in /user/delete"));
+        return default_400(conn);
+    }
+
+    cJSON *id = cJSON_GetObjectItemCaseSensitive(user_data, "id");
+    if (!cJSON_IsNumber(id) || id == NULL) {
+        MG_ERROR(("Error parsing `id` field of JSON in /user/delete"));
+        return default_400(conn);
+    }
+
+    rc = remove_user_by_id(cJSON_GetNumberValue(id));
+    if (rc == NO_AFFECTED_ROWS) {
+        return default_404(conn);
+    }
+    if (rc != OK) {
+        MG_ERROR(("Error connecting to database in /user/delete"));
+        return default_500(conn);
+    }
+
+    free(user_data);
+    free(id);
+    return default_200(conn);
+}
 
 
 

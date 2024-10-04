@@ -26,6 +26,7 @@ int main(int argc, char *argv[]) {
     printf("starting server...\n");
 
     struct mg_mgr mongoose_mgr;
+    mg_log_set(MG_LL_DEBUG);
     mg_mgr_init(&mongoose_mgr);
 
     signal(SIGINT, signal_handler);

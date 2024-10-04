@@ -24,9 +24,13 @@ int add_user(User *user) {
        return ERR_DB_PREPARED_STMT;
     }
 
-    sqlite3_bind_text(stmt, 1, user->uname, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, user->uname, -1, SQLITE_STATIC);
 
     rc = sqlite3_step(stmt);
+    if (rc == SQLITE_CONSTRAINT) {
+        fprintf(stderr, "Failed to execute statement; UNIQUE constraint failed");
+        return ERR_DB_CONFLICT;
+    }
     if (rc != SQLITE_DONE) {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_finalize(stmt);
@@ -80,7 +84,7 @@ int get_user_by_id(int userid, User **user) {
         return ERR_MEMORY_ALLOCATION;
     }
 
-    const unsigned char *username = sqlite3_column_text(stmt, 0);
+    const unsigned char *username = sqlite3_column_text(stmt, 1);
 
     (*user)->id = userid;
     strncpy((*user)->uname, (const char *)username, MAX_USERNAME_LENGTH);
@@ -106,7 +110,7 @@ int remove_user_by_id(int userid) {
     sqlite3 *db = get_connection();
 
     if (db == NULL) {
-        fprintf(stderr, "failed to open DB connection; DB is NULL");
+        fprintf(stderr, "failed to open DB connection; DB is NULL\n");
         return ERR_DB_CREATION;
     }
 
@@ -121,6 +125,12 @@ int remove_user_by_id(int userid) {
     sqlite3_bind_int(stmt, 1, userid);
 
     rc = sqlite3_step(stmt);
+    if (sqlite3_changes(db) == 0) {
+        fprintf(stderr, "no entry was deleted!\n");
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return NO_AFFECTED_ROWS;
+    }
     if (rc != SQLITE_DONE) {
         fprintf(stderr, "failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
@@ -132,7 +142,8 @@ int remove_user_by_id(int userid) {
     return OK;
 }
 
-int get_users_as_array(User ** users, size_t users_size) {
+/* assume caller passes null userlist*/
+int get_users_as_list(User_list **userlist) {
     const char* sql = "select * from user";
     sqlite3_stmt *stmt;
     int rc;
@@ -143,9 +154,24 @@ int get_users_as_array(User ** users, size_t users_size) {
         return ERR_DB_CREATION;
     }
 
-    while (sqlite3_step(stmt) != SQLITE_DONE) {
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
 
+    if(rc != SQLITE_OK) {
+        fprintf(stderr, "failed to prepare sql select statement (?): %s\n", sqlite3_errmsg(db));
+        return ERR_DB_PREPARED_STMT;
     }
+
+    *userlist = user_list_create();
+    int id;
+    const unsigned char *username;
+    while (sqlite3_step(stmt) != SQLITE_DONE) {
+        id = sqlite3_column_int(stmt, 0);
+        username = sqlite3_column_text(stmt, 1);
+        User *u = create_user(id, (const char*) username, strlen(username) + 1);
+        user_list_append(*userlist, u);
+    }
+
+    return OK;
 }
 
 
