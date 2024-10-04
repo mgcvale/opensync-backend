@@ -5,6 +5,7 @@ project(hyprsync-backend LANGUAGES C)
 find_package(PkgConfig REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(cJSON REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 add_library(mongoose STATIC external/mongoose/mongoose.c)
 
@@ -33,7 +34,7 @@ add_executable(hyprsync-backend
     util/util.c
 )
 
-target_link_libraries(hyprsync-backend ${SQLite3_LIBRARIES} ${CJSON_LIBRARIES})
+target_link_libraries(hyprsync-backend ${SQLite3_LIBRARIES} ${CJSON_LIBRARIES} ${OPENSSL_SSL_LIBRARY})
 target_include_directories(hyprsync-backend PRIVATE external/mongoose)
 
 install(TARGETS hyprsync-backend RUNTIME DESTINATION bin)

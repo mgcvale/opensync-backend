@@ -12,7 +12,7 @@ User *create_user(int id, const char* uname, int s_uname) {
 
     user->id = id;
 
-    user->uname = malloc(s_uname + 1 * sizeof(char)); // has to be +1 for null-terminator
+    user->uname = malloc(s_uname + 1 * sizeof(char)); // has to be +1 because of the null-terminator char
     if (user->uname == NULL) {
         fprintf(stderr, "Failed to allocate memory for username\n");
         free(user);
