@@ -34,13 +34,13 @@ void user_create_handler(struct mg_connection* conn, struct mg_http_message *htt
     }
 
     cJSON *username = cJSON_GetObjectItemCaseSensitive(user_data, "username");
-    cJSON_Delete(user_data);
     if (!cJSON_IsString(username) || username->valuestring == NULL) { // double check in case the string is empty
         MG_ERROR(("Error reading `username` field in json in /user/create"));
         return default_400(conn);
     }
 
     User *user = create_new_user(username->valuestring, strlen(username->valuestring));
+    cJSON_Delete(user_data);
     if (user == NULL) {
         MG_ERROR(("Error creating new user in /user/create"));
         return default_500(conn);
@@ -56,7 +56,6 @@ void user_create_handler(struct mg_connection* conn, struct mg_http_message *htt
         return default_500(conn);
     }
 
-    free_user(user);
     return default_200(conn);
 }
 
@@ -79,11 +78,12 @@ void user_getall_handler(struct mg_connection* conn, struct mg_http_message* htt
     }
 
     cJSON *list = jsonify_list(*users);
-    const char *response = cJSON_PrintUnformatted(list);
+    free_User_list(users);
+    char *response = cJSON_PrintUnformatted(list);
 
     mg_http_reply(conn, 200, "Content-Type: application/json\r\n", "%s", response);
+    free(response);
     cJSON_Delete(list);
-    free(users);
 }
 
 void user_delete_handler(struct mg_connection *conn, struct mg_http_message *http_msg) {

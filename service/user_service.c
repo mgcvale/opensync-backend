@@ -29,6 +29,8 @@ int add_user(User *user) {
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_CONSTRAINT) {
         fprintf(stderr, "Failed to execute statement; UNIQUE constraint failed");
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
         return ERR_DB_CONFLICT;
     }
     if (rc != SQLITE_DONE) {
@@ -170,6 +172,9 @@ int get_users_as_list(User_list **userlist) {
         User *u = create_user(id, (const char*) username, strlen(username) + 1);
         user_list_append(*userlist, u);
     }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
 
     return OK;
 }

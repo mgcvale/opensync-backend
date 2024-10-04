@@ -103,8 +103,6 @@ cJSON *jsonify_list(User_list list) {
     return json;
 }
 
-
-
 // O(n)
 User **to_user_array(User_list list, size_t *size) {
     if (list.count == 0) {
@@ -133,6 +131,22 @@ User **to_user_array(User_list list, size_t *size) {
     return user_arr;
 }
 
+static void _free_user_node(_user_node *node) {
+    while (node) {
+        _user_node *next = node->next;
+        free_user(node->user);
+        free(node);
+        node = next;
+    }
+}
+
+void free_User_list(User_list *list) {
+    if (list == NULL) {
+        return;
+    }
+    _free_user_node(list->head);
+    free(list);
+}
 
 
 

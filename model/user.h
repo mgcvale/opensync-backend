@@ -31,6 +31,7 @@ void user_list_append(User_list *list, User *user);
 User **to_user_array(User_list list, size_t *size);
 cJSON *jsonify_user(User *user);
 cJSON *jsonify_list(User_list list);
+void free_User_list(User_list *list);
 
 
 #endif

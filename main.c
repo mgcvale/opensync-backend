@@ -34,14 +34,16 @@ int main(int argc, char *argv[]) {
 
     char *base_url = malloc(64 * sizeof(char));
     snprintf(base_url, 64, "http://localhost:%d", PORT);
-
     mg_http_listen(&mongoose_mgr, base_url, handler, NULL);
+    free(base_url);
 
     printf("Server is running on port %d!\n", PORT);
 
     while (!s_exit_flag) {
         mg_mgr_poll(&mongoose_mgr, 1000);
     }
+
+    mg_mgr_free(&mongoose_mgr);
 
     return 0;
 }
