@@ -44,7 +44,7 @@ int encode_salt(const unsigned char* salt, size_t length, char* encoded_salt) {
 }
 
 // assume caller mallocates output memory for hash - it should be b64_encoded_length(SHA256_DIGEST_LENGTH)
-int hash_password(const char *password, unsigned char *salt, char *hash, size_t salt_size) {
+int hash_password(const char *password, const unsigned char *salt, char *hash, size_t salt_size) {
     if (hash == NULL || password == NULL || salt == NULL) {
         return ERR_MALLOC;
     }

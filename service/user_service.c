@@ -26,8 +26,8 @@ int add_user(User *user) {
     }
 
     sqlite3_bind_text(stmt, 1, user->uname, -1, SQLITE_STATIC);
-    sqlite3_bind_blob(stmt, 2, user->token, sizeof(user->token), SQLITE_STATIC);
-    sqlite3_bind_blob(stmt, 3, user->pwd_hash, sizeof(user->pwd_hash), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, user->token, sizeof(user->token), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, user->pwd_hash, sizeof(user->pwd_hash), SQLITE_STATIC);
     sqlite3_bind_blob(stmt, 4, user->salt, sizeof(user->salt), SQLITE_STATIC);
 
     rc = sqlite3_step(stmt);
@@ -52,7 +52,7 @@ int add_user(User *user) {
 
 /* Caller shouln't malloc User. It should be null) */
 int get_user_by_id(int userid, User **user) {
-    const char *sql = "select * from user where id=?";
+    const char sql[] = "select * from user where id=?";
     sqlite3_stmt *stmt;
     int rc;
     sqlite3 *db = get_connection();
@@ -85,7 +85,7 @@ int get_user_by_id(int userid, User **user) {
     const char *username = (const char*) sqlite3_column_text(stmt, 1);
     const char *pwd_hash = (const char*) sqlite3_column_text(stmt, 2);
     const char *token = (const char*) sqlite3_column_text(stmt, 3);
-    const char *salt = (const char*) sqlite3_column_text(stmt, 4);
+    const unsigned char *salt = sqlite3_column_blob(stmt, 4);
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
@@ -97,6 +97,65 @@ int get_user_by_id(int userid, User **user) {
 
     return OK;
 }
+
+int auth_user_by_pwd(User **out, const char *uname, const char *pwd) {
+    sqlite3 *db = get_connection();
+
+    if (db == NULL) {
+        return ERR_DB_CREATION;
+    }
+
+    const char sql[] = "select * from user where username=?";
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return ERR_DB_PREPARED_STMT;
+    }
+
+    sqlite3_bind_text(stmt, 1, uname, strlen(uname), SQLITE_STATIC);
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_DONE) {
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return DB_NO_RESULT;
+    } else if (rc != SQLITE_ROW) {
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return ERR_DB_QUERY;
+    }
+
+    int id = sqlite3_column_int(stmt, 0);
+    const char *username = (char*) sqlite3_column_text(stmt, 1);
+    const char *pwd_hash = (char*) sqlite3_column_text(stmt, 2);
+    const char *token = (char*) sqlite3_column_text(stmt, 3);
+    const unsigned char *salt = (unsigned char*) sqlite3_column_blob(stmt, 4);
+
+    // before returning the found user, we need to check if hashing the password with the salt results in the same hash
+    char hash[B64_ENCODED_LENGTH(SHA256_DIGEST_LENGTH)];
+    hash_password(pwd, salt, hash, TOKEN_SIZE);
+
+    if (strncmp(hash, pwd_hash, b64_encoded_length(SHA256_DIGEST_LENGTH)) != 0) {
+        fprintf(stderr, "Error authenticating user in auth_user_by_pwd: hashes don't match");
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return ERR_INVALID_CREDENTIALS;
+    }
+
+    (*out) = load_user(id, username, strlen(username), pwd_hash, salt, token);
+    if (*out == NULL) {
+        fprintf(stderr, "Error constructing user from database query");
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return ERR_NULL_POINTER;
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return OK;
+}
+
 
 
 int remove_user(User* user) {
@@ -175,8 +234,8 @@ int get_users_as_list(User_list **userlist) {
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         int id = sqlite3_column_int(stmt, 0);
         const char *username = (const char *)sqlite3_column_text(stmt, 1);
-        const unsigned char *password_hash = sqlite3_column_blob(stmt, 2);
-        const unsigned char *token = sqlite3_column_blob(stmt, 3);
+        const char *password_hash = (const char *) sqlite3_column_text(stmt, 2);
+        const char *token = (const char *) sqlite3_column_text(stmt, 3);
         const unsigned char *salt = sqlite3_column_blob(stmt, 4);
 
         if (!username || !password_hash || !token || !salt) {
@@ -194,6 +253,4 @@ int get_users_as_list(User_list **userlist) {
 
     return OK;
 }
-
-
 

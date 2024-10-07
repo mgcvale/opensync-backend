@@ -18,6 +18,8 @@ void root_user_handler(struct mg_connection* conn, struct mg_http_message *http_
         return user_delete_handler(conn, http_msg);
     } else if (mg_strcmp(http_msg->uri, mg_str("/user/getbyid")) == 0) {
         return user_get_by_id_handler(conn, http_msg);
+    } else if (mg_strcmp(http_msg->uri, mg_str("/user/auth")) == 0) {
+        return user_auth_by_pwd_handler(conn, http_msg);
     }
 
     return default_404(conn);
@@ -172,7 +174,58 @@ void user_get_by_id_handler(struct mg_connection* conn, struct mg_http_message* 
     free(response);
     free_user(user);
     cJSON_Delete(userJson);
-
 }
 
+void user_auth_by_pwd_handler(struct mg_connection *conn, struct mg_http_message *http_msg) {
+    if (mg_strcmp(http_msg->method, mg_str("GET"))) {
+        return default_405(conn);
+    }
 
+    cJSON *user_data = cJSON_ParseWithLength(http_msg->body.buf, http_msg->body.len);
+    if (user_data == NULL) {
+        MG_ERROR(("Error parsing JSON in /user/getbyid"));
+        return default_400(conn);
+    }
+
+    cJSON *username = cJSON_GetObjectItemCaseSensitive(user_data, "username");
+    if (!cJSON_IsString(username) || username->valuestring == NULL) {
+        MG_ERROR(("Error parsing `username` field of JSON in /user/auth"));
+        cJSON_Delete(user_data);
+        return default_400(conn);
+    }
+
+    cJSON *password = cJSON_GetObjectItemCaseSensitive(user_data, "password");
+    if (!cJSON_IsString(password) || password->valuestring == NULL) {
+        MG_ERROR(("Error parsing `password` field of JSON in /user/auth"));
+        cJSON_Delete(user_data);
+        return default_400(conn);
+    }
+
+    User *user = NULL;
+    int rc = auth_user_by_pwd(&user, username->valuestring, password->valuestring);
+    cJSON_Delete(user_data);
+
+    if (rc == ERR_INVALID_CREDENTIALS) {
+        MG_ERROR(("Error authenticating user in /user/auth - invalid credentials"));
+        return default_401(conn);
+    } else if (rc == DB_NO_RESULT) {
+        MG_ERROR(("Error fetching user: no entry found in /user/auth"));
+        return default_404(conn);
+    } else if (rc != OK) {
+        MG_ERROR(("Error constructing user variable in /user/auth, error code: %d", rc));
+        return default_500(conn);
+    }
+
+    cJSON *userJson = jsonify_user(user);
+    free(user);
+    if (userJson == NULL) {
+        MG_ERROR(("Error jsonifying result user in /user/auth"));
+        return default_500(conn);
+    }
+
+    char *response = cJSON_PrintUnformatted(userJson);
+    mg_http_reply(conn, 200, "Content-Type: application/json\n\r", response);
+    cJSON_Delete(userJson);
+    free(response);
+    conn->is_draining = 1;
+}

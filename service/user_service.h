@@ -9,5 +9,6 @@ int remove_user(User *user);
 int update_user(User *user);
 int get_user_by_id(int id, User **user);
 int get_users_as_list(User_list **list);
+int auth_user_by_pwd(User **out, const char *uname, const char *pwd);
 
 #endif //HYPRSYNC_BACKEND_USER_SERVICE_H

@@ -15,4 +15,6 @@ void default_500(struct mg_connection *conn);
 
 void default_409(struct mg_connection *conn);
 
+void default_401(struct mg_connection *conn);
+
 #endif //HYPRSYNC_BACKEND_DEFAULTS_H

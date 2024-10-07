@@ -14,6 +14,7 @@
 #define ERR_DB_EXECUTION -9
 #define NO_AFFECTED_ROWS -10
 #define ERR_USERLIST_CREATION -11
+#define ERR_INVALID_CREDENTIALS -12
 #define OK 0
 
 sqlite3* get_connection();

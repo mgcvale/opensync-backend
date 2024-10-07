@@ -26,3 +26,8 @@ void default_500(struct mg_connection* conn)
 void default_409(struct mg_connection* conn) {
     mg_http_reply(conn, 500, "Content-Type: application/json\r\n", "{\"message\": \"CONFLICT\"}");
 }
+
+void default_401(struct mg_connection* conn) {
+    mg_http_reply(conn, 401, "Content-Type: application/json\r\n", "{\"message\": \"UNAUTHORIZED\"}");
+}
+

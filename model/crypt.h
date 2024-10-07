@@ -12,7 +12,7 @@
 #define CRYPT_OK 1
 #define SHA256_DIGEST_LENGTH 32
 
-#define SHA256_ITER_COUNT 20000
+#define SHA256_ITER_COUNT 10000
 
 #define B64_ENCODED_LENGTH(input_length) (4 * ((input_length + 2) / 3) + 1)
 
@@ -20,7 +20,7 @@
 
 int gensalt_raw(unsigned char *salt, size_t length);
 int encode_salt(const unsigned char *salt, size_t length, char* encoded_salt);
-int hash_password(const char* password, unsigned char *salt, char *hash, size_t salt_size);
+int hash_password(const char* password, const unsigned char *salt, char *hash, size_t salt_size);
 int gentoken( char *token, size_t length);
 size_t b64_encoded_length(size_t input_length);
 

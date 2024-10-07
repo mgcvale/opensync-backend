@@ -10,10 +10,10 @@
 
 typedef struct {
     int id;
-    char *uname;
+    char uname[MAX_USERNAME_LENGTH];
     char pwd_hash[B64_ENCODED_LENGTH(SHA256_DIGEST_LENGTH)];
     char token[B64_ENCODED_LENGTH(TOKEN_SIZE)];
-    char salt[B64_ENCODED_LENGTH(TOKEN_SIZE)];
+    char salt[TOKEN_SIZE];
 } User;
 
 typedef struct _user_node{
@@ -28,7 +28,7 @@ typedef struct {
 } User_list;
 
 User* create_new_user(const char *uname, int s_uname, const char *pwd);
-User* load_user(int id, const char *uname, int s_uname, const char *pwd_hash, const char *salt, const char *token);
+User* load_user(int id, const char *uname, int s_uname, const char *pwd_hash, const unsigned char *salt, const char *token);
 void free_user(User *user);
 
 User_list *user_list_create(void);
