@@ -164,6 +164,7 @@ int get_users_as_list(User_list **userlist) {
 
     if(rc != SQLITE_OK) {
         fprintf(stderr, "failed to prepare sql select statement (?): %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
         return ERR_DB_PREPARED_STMT;
     }
 
