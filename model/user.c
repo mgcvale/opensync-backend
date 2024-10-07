@@ -2,11 +2,19 @@
 #include <stdio.h>
 #include <string.h>
 #include <cjson/cJSON.h>
+#include "crypt.h"
+#include "mongoose.h"
 
-User *create_user(int id, const char* uname, int s_uname) {
+User * load_user(int id, const char* uname, int s_uname, const char* pwd_hash, const char* salt, const char* token) {
     User* user = malloc(sizeof(User));
     if (user == NULL) {
         fprintf(stderr, "Failed to allocate memory for user\n");
+        return NULL;
+    }
+
+    if (!pwd_hash || !token || !salt || !uname) {
+        fprintf(stderr, "Required fields were null in user load_user");
+        free(user);
         return NULL;
     }
 
@@ -20,13 +28,70 @@ User *create_user(int id, const char* uname, int s_uname) {
     }
 
     strncpy(user->uname, uname, s_uname+1);
-    user->uname[s_uname] = '\0';
+    memcpy(user->pwd_hash, pwd_hash, b64_encoded_length(SHA256_DIGEST_LENGTH));
+    memcpy(user->token, token, b64_encoded_length(TOKEN_SIZE));
+    memcpy(user->salt, salt, b64_encoded_length(TOKEN_SIZE));
 
+    // no need to malloc or free token, pwd hash and salt as they are stack allocated
+
+    user->uname[s_uname] = '\0';
     return user;
 }
 
-User * create_new_user(const char* uname, int s_uname) {
-    return create_user(-1, uname, s_uname);
+User *create_new_user(const char *uname, int s_uname, const char *pwd) {
+
+    // salt gen
+    unsigned char *salt_blob = NULL;
+    salt_blob = malloc(TOKEN_SIZE * sizeof(char));
+    if (salt_blob == NULL) {
+        return NULL;
+    }
+
+    int code = gensalt_raw(salt_blob, TOKEN_SIZE);
+    if (code != 1) {
+        free(salt_blob);
+        return NULL;
+    }
+
+    // hash gen (with generated salt)
+    char *hash = malloc(SHA256_DIGEST_LENGTH * 2 *sizeof(char));
+    code = hash_password(pwd, salt_blob, hash, TOKEN_SIZE);
+    if (code != CRYPT_OK) {
+        free(salt_blob);
+        return NULL;
+    }
+
+    // encode salt
+    char *encoded_salt = NULL;
+    encoded_salt = malloc(b64_encoded_length(TOKEN_SIZE) * sizeof(char));
+    if (encoded_salt == NULL) {
+        free(hash);
+        free(salt_blob);
+        return NULL;
+    }
+
+    code = encode_salt(salt_blob, TOKEN_SIZE, encoded_salt);
+    free(salt_blob);
+    if (code != CRYPT_OK) {
+        free(hash);
+        free(encoded_salt);
+    }
+
+    // generate token
+    char *token = malloc(b64_encoded_length(TOKEN_SIZE) * sizeof(char));
+    code = gentoken(token, TOKEN_SIZE);
+    if (code != 1) {
+        free(hash);
+        free(encoded_salt);
+        free(token);
+        return NULL;
+    }
+
+    User *u = load_user(-1, uname, s_uname, hash, encoded_salt, token);
+    free(hash);
+    free(encoded_salt);
+    free(token);
+    return u;
 }
 
 void free_user(User *user) {
@@ -83,11 +148,13 @@ void user_list_append(User_list *list, User *user) {
         list->count++;
     }
 }
-
 cJSON *jsonify_user(User *user) {
     cJSON *user_json = cJSON_CreateObject();
     cJSON_AddNumberToObject(user_json, "id", user->id);
     cJSON_AddStringToObject(user_json, "username", user->uname);
+    cJSON_AddStringToObject(user_json, "token", user->token);
+    cJSON_AddStringToObject(user_json, "salt", user->salt);
+    cJSON_AddStringToObject(user_json, "password_hash", user->pwd_hash);
     return user_json;
 }
 

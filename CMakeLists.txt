@@ -23,18 +23,19 @@ add_executable(hyprsync-backend
 
     model/user.h
     model/user.c
+    model/crypt.h
+    model/crypt.c
 
     service/database.c
     service/database.h
     service/user_service.c
     service/user_service.h
 
-    util/var.h
     util/util.h
     util/util.c
 )
 
-target_link_libraries(hyprsync-backend ${SQLite3_LIBRARIES} ${CJSON_LIBRARIES} ${OPENSSL_SSL_LIBRARY})
+target_link_libraries(hyprsync-backend ${SQLite3_LIBRARIES} ${CJSON_LIBRARIES} ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
 target_include_directories(hyprsync-backend PRIVATE external/mongoose)
 
 install(TARGETS hyprsync-backend RUNTIME DESTINATION bin)

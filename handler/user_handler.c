@@ -38,8 +38,13 @@ void user_create_handler(struct mg_connection* conn, struct mg_http_message *htt
         MG_ERROR(("Error reading `username` field in json in /user/create"));
         return default_400(conn);
     }
+    cJSON *pwd = cJSON_GetObjectItemCaseSensitive(user_data, "password");
+    if (!cJSON_IsString(pwd) || pwd->valuestring == NULL) {
+        MG_ERROR(("Error reading `password` field in json in /user/create"));
+        return default_400(conn);
+    }
 
-    User *user = create_new_user(username->valuestring, strlen(username->valuestring));
+    User *user = create_new_user(username->valuestring, strlen(username->valuestring), pwd->valuestring);
     cJSON_Delete(user_data);
     if (user == NULL) {
         MG_ERROR(("Error creating new user in /user/create"));

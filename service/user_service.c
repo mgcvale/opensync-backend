@@ -5,9 +5,10 @@
 
 #include "user_service.h"
 #include "database.h"
+#include "crypt.h"
 
 int add_user(User *user) {
-    const char *sql = "insert into user(username) values(?)";
+    const char *sql = "insert into user(username, token, password_hash, salt) values(?, ?, ?, ?)";
     sqlite3_stmt *stmt;
     int rc;
     sqlite3 *db = get_connection();
@@ -25,6 +26,9 @@ int add_user(User *user) {
     }
 
     sqlite3_bind_text(stmt, 1, user->uname, -1, SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 2, user->token, sizeof(user->token), SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 3, user->pwd_hash, sizeof(user->pwd_hash), SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 4, user->salt, sizeof(user->salt), SQLITE_STATIC);
 
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_CONSTRAINT) {
@@ -164,15 +168,29 @@ int get_users_as_list(User_list **userlist) {
     }
 
     *userlist = user_list_create();
-    int id;
-    const unsigned char *username;
-    while (sqlite3_step(stmt) != SQLITE_DONE) {
-        id = sqlite3_column_int(stmt, 0);
-        username = sqlite3_column_text(stmt, 1);
-        User *u = create_user(id, (const char*) username, strlen(username) + 1);
-        user_list_append(*userlist, u);
+    if (userlist == NULL) {
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return ERR_USERLIST_CREATION;
     }
 
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        int id = sqlite3_column_int(stmt, 0);
+        const char *username = (const char *)sqlite3_column_text(stmt, 1);
+        const unsigned char *password_hash = sqlite3_column_blob(stmt, 2);
+        const unsigned char *token = sqlite3_column_blob(stmt, 3);
+        const unsigned char *salt = sqlite3_column_blob(stmt, 4);
+
+        if (!username || !password_hash || !token || !salt) {
+            fprintf(stderr, "Null value encountered in database result\n");
+            continue;
+        }
+
+        User *u = load_user(id, username, strlen(username), password_hash, salt, token);
+        if (u) {
+            user_list_append(*userlist, u);
+        }
+    }
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 

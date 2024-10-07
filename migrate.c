@@ -5,7 +5,7 @@ int migrate() {
     sqlite3 *db;
     char* err_msg = 0;
     int rc;
-    const char* sql = "create table if not exists user (id integer primary key, username varchar(64), unique(username))";
+    const char* sql = "create table if not exists user (id integer primary key, username varchar(64), password_hash varchar(64), token varchar(16), salt varchar(16), unique(username, token))";
 
     printf("[MIGRATION] starting migration...\n");
     printf("---->DB Creation (1/2)<----\n");
