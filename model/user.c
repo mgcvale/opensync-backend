@@ -62,19 +62,11 @@ User *create_new_user(const char *uname, int s_uname, const char *pwd) {
     }
 
     // encode salt
-    char *encoded_salt = NULL;
-    encoded_salt = malloc(b64_encoded_length(TOKEN_SIZE) * sizeof(char));
-    if (encoded_salt == NULL) {
-        free(hash);
-        free(salt_blob);
-        return NULL;
-    }
-
+    char encoded_salt[B64_ENCODED_LENGTH(TOKEN_SIZE)];
     code = encode_salt(salt_blob, TOKEN_SIZE, encoded_salt);
     free(salt_blob);
     if (code != CRYPT_OK) {
         free(hash);
-        free(encoded_salt);
     }
 
     // generate token
@@ -82,14 +74,12 @@ User *create_new_user(const char *uname, int s_uname, const char *pwd) {
     code = gentoken(token, TOKEN_SIZE);
     if (code != 1) {
         free(hash);
-        free(encoded_salt);
         free(token);
         return NULL;
     }
 
     User *u = load_user(-1, uname, s_uname, hash, encoded_salt, token);
     free(hash);
-    free(encoded_salt);
     free(token);
     return u;
 }

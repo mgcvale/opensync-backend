@@ -82,22 +82,19 @@ int get_user_by_id(int userid, User **user) {
         return ERR_DB_QUERY;
     }
 
-    *user = malloc(sizeof(User));
-    if (*user == NULL) {
-        fprintf(stderr, "Failed to allocate memory for User\n");
-        sqlite3_finalize(stmt);
-        sqlite3_close(db);
-        return ERR_MEMORY_ALLOCATION;
-    }
-
-    const unsigned char *username = sqlite3_column_text(stmt, 1);
-
-    (*user)->id = userid;
-    strncpy((*user)->uname, (const char *)username, MAX_USERNAME_LENGTH);
-    (*user)->uname[MAX_USERNAME_LENGTH-1] = '\0';
-
+    const char *username = (const char*) sqlite3_column_text(stmt, 1);
+    const char *pwd_hash = (const char*) sqlite3_column_text(stmt, 2);
+    const char *token = (const char*) sqlite3_column_text(stmt, 3);
+    const char *salt = (const char*) sqlite3_column_text(stmt, 4);
     sqlite3_finalize(stmt);
     sqlite3_close(db);
+
+    (*user) = load_user(userid, username, strlen(username), pwd_hash, salt, token);
+    if (*user == NULL) {
+        fprintf(stderr, "Error constructing user from database query");
+        return ERR_NULL_POINTER;
+    }
+
     return OK;
 }
 

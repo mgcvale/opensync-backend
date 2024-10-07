@@ -16,6 +16,7 @@ static int encode_b64(const unsigned char *blob, char *output, size_t input_leng
     }
 
     if (input_length == 0) {
+        output[0] = '\0';
         return CRYPT_OK;
     }
 
@@ -42,7 +43,7 @@ int encode_salt(const unsigned char* salt, size_t length, char* encoded_salt) {
     return CRYPT_OK;
 }
 
-// assume caller mallocates output memory
+// assume caller mallocates output memory for hash - it should be b64_encoded_length(SHA256_DIGEST_LENGTH)
 int hash_password(const char *password, unsigned char *salt, char *hash, size_t salt_size) {
     if (hash == NULL || password == NULL || salt == NULL) {
         return ERR_MALLOC;
@@ -53,38 +54,48 @@ int hash_password(const char *password, unsigned char *salt, char *hash, size_t 
         return ERR_EVP_CTX_CREATION;
     }
 
+    unsigned char temp_hash[SHA256_DIGEST_LENGTH];
+    unsigned int hash_len;
+
     // init digest
     if (EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) != 1) {
         EVP_MD_CTX_free(ctx);
         return ERR_EVP_DIGEST_INIT;
     }
 
-    // add salt and pwd
+    // Add salt and password
     EVP_DigestUpdate(ctx, password, strlen(password));
     EVP_DigestUpdate(ctx, salt, salt_size);
 
-    unsigned char *decoded = NULL;
-    decoded = malloc(SHA256_DIGEST_LENGTH * sizeof(char));
-    if (decoded == NULL) {
-        EVP_MD_CTX_free(ctx);
-        return ERR_MALLOC;
-    }
 
-    unsigned int hash_len;
-    if (EVP_DigestFinal_ex(ctx, decoded, &hash_len) != 1) {
+    // first hash calculation
+    if (EVP_DigestFinal_ex(ctx, temp_hash, &hash_len) != 1) {
         EVP_MD_CTX_free(ctx);
-        free(decoded);
         return ERR_FINAL_DIGEST;
     }
 
-    if (encode_b64(decoded, hash, SHA256_DIGEST_LENGTH) != CRYPT_OK) {
-        free(decoded);
-        EVP_MD_CTX_free(ctx);
+    // Iterate SHA256_ITER_COUNT times
+    for (int i = 1; i < SHA256_ITER_COUNT; i++) {
+        // Re-initialize the digest context for each iteration
+        if (EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) != 1) {
+            EVP_MD_CTX_free(ctx);
+            return ERR_EVP_DIGEST_INIT;
+        }
+
+        // re-hash hash
+        EVP_DigestUpdate(ctx, temp_hash, SHA256_DIGEST_LENGTH);
+        if (EVP_DigestFinal_ex(ctx, temp_hash, &hash_len) != 1) {
+            EVP_MD_CTX_free(ctx);
+            return ERR_FINAL_DIGEST;
+        }
+    }
+    EVP_MD_CTX_free(ctx);
+
+    // b64-encode final hash
+    if (encode_b64(temp_hash, hash, SHA256_DIGEST_LENGTH) != CRYPT_OK) {
         return ERR_B64_ENCODE;
     }
 
-    EVP_MD_CTX_free(ctx);
-    free(decoded);
     return CRYPT_OK;
 }
 

@@ -16,6 +16,8 @@ void root_user_handler(struct mg_connection* conn, struct mg_http_message *http_
         return user_getall_handler(conn, http_msg);
     } else if (mg_strcmp(http_msg->uri, mg_str("/user/delete")) == 0) {
         return user_delete_handler(conn, http_msg);
+    } else if (mg_strcmp(http_msg->uri, mg_str("/user/getbyid")) == 0) {
+        return user_get_by_id_handler(conn, http_msg);
     }
 
     return default_404(conn);
@@ -122,5 +124,55 @@ void user_delete_handler(struct mg_connection *conn, struct mg_http_message *htt
     return default_200(conn);
 }
 
+
+void user_get_by_id_handler(struct mg_connection* conn, struct mg_http_message* http_msg) {
+    if (mg_strcmp(http_msg->method, mg_str("GET"))) {
+        return default_405(conn);
+    }
+
+    cJSON *user_data = cJSON_ParseWithLength(http_msg->body.buf, http_msg->body.len);
+    if (user_data == NULL) {
+        MG_ERROR(("Error parsing JSON in /user/getbyid"));
+        return default_400(conn);
+    }
+
+    cJSON *id = cJSON_GetObjectItemCaseSensitive(user_data, "id");
+    if (!cJSON_IsNumber(id)) {
+        MG_ERROR(("Error parsing `id` field of JSON in /user/getbyid"));
+        cJSON_Delete(user_data);
+        return default_400(conn);
+    }
+
+    User *user;
+    int rc = get_user_by_id(cJSON_GetNumberValue(id), &user);
+    cJSON_Delete(user_data);
+    if (rc == ERR_DB_QUERY) {
+        MG_ERROR(("No user found in /user/getbyid"));
+        return default_404(conn);
+    } else if (rc != OK) {
+        MG_ERROR(("Error connecting to database in /user/getbyid"));
+        return default_500(conn);
+    }
+
+    if (user == NULL) {
+        MG_ERROR(("Error creating user from data in /user/getbyid"));
+        return default_500(conn);
+    }
+
+    cJSON *userJson = jsonify_user(user);
+    if (userJson == NULL) {
+        free_user(user);
+        MG_ERROR(("Error jsonifying user in /user/getbyid"));
+        return default_500(conn);
+    }
+
+    char *response = cJSON_PrintUnformatted(userJson);
+
+    mg_http_reply(conn, 200, "Content-Type: application/json\r\n", "%s", response);
+    free(response);
+    free_user(user);
+    cJSON_Delete(userJson);
+
+}
 
 
