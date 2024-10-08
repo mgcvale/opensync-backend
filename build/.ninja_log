@@ -1,9 +1,0 @@
-# ninja log v6
-11	97	1727733750160014606	CMakeFiles/hyprsync-backend.dir/util/util.c.o	95ea6ca3ca104c0e
-2	114	1727733750150014606	CMakeFiles/hyprsync-backend.dir/handler/user_handler.c.o	333a540477f1fa10
-2	133	1727733750150014606	CMakeFiles/hyprsync-backend.dir/handler/defaults.c.o	a86b95c65a1c0d5a
-2	133	1727733750150014606	CMakeFiles/hyprsync-backend.dir/handler/handler.c.o	77f614bf3caa11e1
-7	143	1727733750156681273	CMakeFiles/hyprsync-backend.dir/service/database.c.o	916f4e83ce1910f
-10	148	1727733750160014606	CMakeFiles/hyprsync-backend.dir/service/user_service.c.o	8ba2d9ca34813f4f
-1	182	1727733750150014606	CMakeFiles/hyprsync-backend.dir/main.c.o	f20fbb81e9c0ac9e
-182	280	1727733750330014616	hyprsync-backend	181408779a05e482
