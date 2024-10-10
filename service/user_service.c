@@ -2,10 +2,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "user_service.h"
 #include "database.h"
 #include "crypt.h"
+#include "mongoose.h"
 
 int add_user(User *user) {
     const char *sql = "insert into user(username, token, password_hash, salt) values(?, ?, ?, ?)";
@@ -18,37 +20,35 @@ int add_user(User *user) {
     }
 
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-
     if (rc != SQLITE_OK) {
-       fprintf(stderr, "failed to prepare statement: %s\n", sqlite3_errmsg(db));
-       sqlite3_close(db);
-       return ERR_DB_PREPARED_STMT;
+        fprintf(stderr, "failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return ERR_DB_PREPARED_STMT;
     }
 
     sqlite3_bind_text(stmt, 1, user->uname, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, user->token, sizeof(user->token), SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 3, user->pwd_hash, sizeof(user->pwd_hash), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, user->token, strlen(user->token), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, user->pwd_hash, strlen(user->pwd_hash), SQLITE_STATIC);
     sqlite3_bind_blob(stmt, 4, user->salt, sizeof(user->salt), SQLITE_STATIC);
 
     rc = sqlite3_step(stmt);
+
     if (rc == SQLITE_CONSTRAINT) {
         fprintf(stderr, "Failed to execute statement; UNIQUE constraint failed");
-        sqlite3_finalize(stmt);
-        sqlite3_close(db);
-        return ERR_DB_CONFLICT;
+        goto cleanup;
     }
     if (rc != SQLITE_DONE) {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-        sqlite3_finalize(stmt);
-        sqlite3_close(db);
-        return ERR_DB_INSERTION;
+        goto cleanup;
     }
 
+    cleanup:
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
-    return OK;
+    return (rc == SQLITE_DONE) ? OK : ERR_DB_INSERTION;
 }
+
 
 /* Caller shouln't malloc User. It should be null) */
 int get_user_by_id(int userid, User **user) {
@@ -105,7 +105,7 @@ int auth_user_by_pwd(User **out, const char *uname, const char *pwd) {
         return ERR_DB_CREATION;
     }
 
-    const char sql[] = "select * from user where username=?";
+    const char sql[] = "select id, password_hash, token, salt from user where username=?";
     sqlite3_stmt *stmt;
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
@@ -127,10 +127,9 @@ int auth_user_by_pwd(User **out, const char *uname, const char *pwd) {
     }
 
     int id = sqlite3_column_int(stmt, 0);
-    const char *username = (char*) sqlite3_column_text(stmt, 1);
-    const char *pwd_hash = (char*) sqlite3_column_text(stmt, 2);
-    const char *token = (char*) sqlite3_column_text(stmt, 3);
-    const unsigned char *salt = (unsigned char*) sqlite3_column_blob(stmt, 4);
+    const char *pwd_hash = (char*) sqlite3_column_text(stmt, 1);
+    const char *token = (char*) sqlite3_column_text(stmt, 2);
+    const unsigned char *salt = (unsigned char*) sqlite3_column_blob(stmt, 3);
 
     // before returning the found user, we need to check if hashing the password with the salt results in the same hash
     char hash[B64_ENCODED_LENGTH(SHA256_DIGEST_LENGTH)];
@@ -143,7 +142,7 @@ int auth_user_by_pwd(User **out, const char *uname, const char *pwd) {
         return ERR_INVALID_CREDENTIALS;
     }
 
-    (*out) = load_user(id, username, strlen(username), pwd_hash, salt, token);
+    (*out) = load_user(id, uname, strlen(uname), pwd_hash, salt, token);
     if (*out == NULL) {
         fprintf(stderr, "Error constructing user from database query");
         sqlite3_finalize(stmt);
@@ -156,51 +155,94 @@ int auth_user_by_pwd(User **out, const char *uname, const char *pwd) {
     return OK;
 }
 
-
-
-int remove_user(User* user) {
-    if (user == NULL) {
-        return ERR_NULL_POINTER;
-    }
-    return remove_user_by_id(user->id);
-}
-
-int remove_user_by_id(int userid) {
-    const char *sql = "delete from user where id=?";
-    sqlite3_stmt *stmt;
-    int rc;
+int get_token_by_pwd(char *token, const char *uname, const char *pwd) {
     sqlite3 *db = get_connection();
 
     if (db == NULL) {
-        fprintf(stderr, "failed to open DB connection; DB is NULL\n");
         return ERR_DB_CREATION;
     }
 
-    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-
+    const char sql[] = "select token, password_hash, salt from user where username=?";
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
         fprintf(stderr, "failed to prepare statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return ERR_DB_PREPARED_STMT;
     }
 
-    sqlite3_bind_int(stmt, 1, userid);
-
+    sqlite3_bind_text(stmt, 1, uname, strlen(uname), SQLITE_STATIC);
     rc = sqlite3_step(stmt);
-    if (sqlite3_changes(db) == 0) {
-        fprintf(stderr, "no entry was deleted!\n");
+    if (rc == SQLITE_DONE) {
         sqlite3_finalize(stmt);
         sqlite3_close(db);
-        return NO_AFFECTED_ROWS;
+        return DB_NO_RESULT;
+    } else if (rc != SQLITE_ROW) {
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return ERR_DB_QUERY;
     }
+
+    const char *pwd_hash = (char *) sqlite3_column_text(stmt, 1);
+    const unsigned char *salt = sqlite3_column_text(stmt, 2);
+
+    // before returning the found user, we need to check if hashing the password with the salt results in the same hash
+    int sha256_encoded_length = b64_encoded_length(SHA256_DIGEST_LENGTH);
+    int token_encoded_length = b64_encoded_length(TOKEN_SIZE);
+    char hash[sha256_encoded_length];
+    hash_password(pwd, salt, hash, TOKEN_SIZE);
+
+    if (strncmp(hash, pwd_hash, sha256_encoded_length) != 0) {
+        fprintf(stderr, "Error authenticating user in auth_user_by_pwd: hashes don't match");
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return ERR_INVALID_CREDENTIALS;
+    }
+
+    const char *retrieved_token = (const char *) sqlite3_column_text(stmt, 0);
+    strncpy(token, retrieved_token, token_encoded_length - 1);
+    token[token_encoded_length - 1] = '\0';
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return OK;
+}
+
+int remove_user_by_token(const char *token) {
+    sqlite3 *db = get_connection();
+    if (db == NULL) {
+        fprintf(stderr, "failed to open DB connection; db is NULL\n");
+        return ERR_DB_CREATION;
+    }
+
+    const char sql[] = "DELETE FROM user WHERE token=?";
+    sqlite3_stmt *stmt;
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return ERR_DB_PREPARED_STMT;
+    }
+
+    rc = sqlite3_bind_text(stmt, 1, token, -1, SQLITE_STATIC);
+    rc = sqlite3_step(stmt);
     if (rc != SQLITE_DONE) {
-        fprintf(stderr, "failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
         sqlite3_close(db);
         return ERR_DB_EXECUTION;
     }
 
+    if (sqlite3_changes(db) == 0) {
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return NO_AFFECTED_ROWS;
+    }
+
     sqlite3_finalize(stmt);
     sqlite3_close(db);
+
     return OK;
 }
 

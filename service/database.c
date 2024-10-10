@@ -3,7 +3,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+static sqlite3 *db = NULL;
+
 sqlite3* get_connection() {
+    if (db != NULL) {
+        return db;
+    }
+
     sqlite3 *db;
     int rc;
 

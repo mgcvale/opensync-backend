@@ -54,6 +54,7 @@ void user_create_handler(struct mg_connection* conn, struct mg_http_message *htt
         MG_ERROR(("Error creating new user in /user/create"));
         return default_500(conn);
     }
+
     int rc = add_user(user);
     free_user(user);
 
@@ -106,14 +107,14 @@ void user_delete_handler(struct mg_connection *conn, struct mg_http_message *htt
         return default_400(conn);
     }
 
-    cJSON *id = cJSON_GetObjectItemCaseSensitive(user_data, "id");
-    if (!cJSON_IsNumber(id)) {
-        MG_ERROR(("Error parsing `id` field of JSON in /user/delete"));
+    cJSON *token = cJSON_GetObjectItemCaseSensitive(user_data, "token");
+    if (!cJSON_IsString(token) || token->valuestring == NULL) {
+        MG_ERROR(("Error parsing `token` field of JSON in /user/delete"));
         cJSON_Delete(user_data);
         return default_400(conn);
     }
 
-    int rc = remove_user_by_id(cJSON_GetNumberValue(id));
+    int rc = remove_user_by_token(token->valuestring);
     cJSON_Delete(user_data);
     if (rc == NO_AFFECTED_ROWS) {
         MG_ERROR(("No user found in /user/delete"));
@@ -177,7 +178,7 @@ void user_get_by_id_handler(struct mg_connection* conn, struct mg_http_message* 
 }
 
 void user_auth_by_pwd_handler(struct mg_connection *conn, struct mg_http_message *http_msg) {
-    if (mg_strcmp(http_msg->method, mg_str("GET"))) {
+    if (mg_strcmp(http_msg->method, mg_str("POST"))) {
         return default_405(conn);
     }
 
@@ -201,11 +202,11 @@ void user_auth_by_pwd_handler(struct mg_connection *conn, struct mg_http_message
         return default_400(conn);
     }
 
-    User *user = NULL;
-    int rc = auth_user_by_pwd(&user, username->valuestring, password->valuestring);
+    char token[B64_ENCODED_LENGTH(TOKEN_SIZE)];
+    int rc = get_token_by_pwd(token, username->valuestring, password->valuestring);
     cJSON_Delete(user_data);
 
-    if (rc == ERR_INVALID_CREDENTIALS) {
+    if (rc == NO_AFFECTED_ROWS) {
         MG_ERROR(("Error authenticating user in /user/auth - invalid credentials"));
         return default_401(conn);
     } else if (rc == DB_NO_RESULT) {
@@ -216,16 +217,9 @@ void user_auth_by_pwd_handler(struct mg_connection *conn, struct mg_http_message
         return default_500(conn);
     }
 
-    cJSON *userJson = jsonify_user(user);
-    free(user);
-    if (userJson == NULL) {
-        MG_ERROR(("Error jsonifying result user in /user/auth"));
-        return default_500(conn);
-    }
+    char response[256];
+    snprintf(response, sizeof(response), "{\"token\": \"%s\"}", token);
 
-    char *response = cJSON_PrintUnformatted(userJson);
     mg_http_reply(conn, 200, "Content-Type: application/json\n\r", response);
-    cJSON_Delete(userJson);
-    free(response);
     conn->is_draining = 1;
 }

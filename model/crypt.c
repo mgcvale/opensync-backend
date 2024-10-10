@@ -20,8 +20,19 @@ static int encode_b64(const unsigned char *blob, char *output, size_t input_leng
         return CRYPT_OK;
     }
 
-    mg_base64_encode(blob, input_length, output, b64_encoded_length(input_length));
-    output[b64_encoded_length(input_length)-1] = '\0';
+    BIO *bio, *b64;
+    BUF_MEM *bufferPtr;
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_new(BIO_s_mem());
+    bio = BIO_push(b64, bio);
+
+    BIO_write(bio, blob, input_length);
+    BIO_flush(bio);
+    BIO_get_mem_ptr(bio, &bufferPtr);
+    memcpy(output, (*bufferPtr).data, (*bufferPtr).length - 1);
+    output[(*bufferPtr).length - 1] = '\0';
+
+    BIO_free_all(bio);
 
     return CRYPT_OK;
 }
@@ -63,26 +74,16 @@ int hash_password(const char *password, const unsigned char *salt, char *hash, s
         return ERR_EVP_DIGEST_INIT;
     }
 
-    // Add salt and password
     EVP_DigestUpdate(ctx, password, strlen(password));
     EVP_DigestUpdate(ctx, salt, salt_size);
 
-
-    // first hash calculation
     if (EVP_DigestFinal_ex(ctx, temp_hash, &hash_len) != 1) {
         EVP_MD_CTX_free(ctx);
         return ERR_FINAL_DIGEST;
     }
 
-    // Iterate SHA256_ITER_COUNT times
     for (int i = 1; i < SHA256_ITER_COUNT; i++) {
-        // Re-initialize the digest context for each iteration
-        if (EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) != 1) {
-            EVP_MD_CTX_free(ctx);
-            return ERR_EVP_DIGEST_INIT;
-        }
-
-        // re-hash hash
+        EVP_DigestInit_ex(ctx, EVP_sha256(), NULL);
         EVP_DigestUpdate(ctx, temp_hash, SHA256_DIGEST_LENGTH);
         if (EVP_DigestFinal_ex(ctx, temp_hash, &hash_len) != 1) {
             EVP_MD_CTX_free(ctx);
@@ -101,24 +102,16 @@ int hash_password(const char *password, const unsigned char *salt, char *hash, s
 
 // assume caller mallocates output memory
 int gentoken(char *token, size_t length) {
-    unsigned char *decoded = NULL;
-    decoded = malloc(length * sizeof(char));
-    if (decoded == NULL) {
-        return ERR_MALLOC;
-    }
-
+    unsigned char decoded[length];
     int code = RAND_bytes(decoded, length);
     if (code != 1) {
-        free(decoded);
         return ERR_TOKEN_GEN;
     }
 
 
     if (encode_b64(decoded, token, length) != CRYPT_OK) {
-        free(decoded);
         return ERR_B64_ENCODE;
     }
 
-    free(decoded);
     return CRYPT_OK;
 }

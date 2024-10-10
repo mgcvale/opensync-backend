@@ -5,7 +5,7 @@ int migrate() {
     sqlite3 *db;
     char* err_msg = 0;
     int rc;
-    const char* sql = "create table if not exists user (id integer primary key, username varchar(64) unique, password_hash varchar(48), token varchar(24) unique, salt blob)";
+    char* sql = "create table if not exists user (id integer primary key, username varchar(64) unique, password_hash varchar(48), token varchar(24) unique, salt blob)";
 
     printf("[MIGRATION] starting migration...\n");
     printf("---->DB Creation (1/2)<----\n");
@@ -22,6 +22,8 @@ int migrate() {
     printf("---->Table creation<----\n");
 
     rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+    sql = "PRAGMA synchronous=FULL";
+    sqlite3_exec(db, sql, 0, 0, NULL);
 
     if (rc != SQLITE_OK) {
         fprintf(stderr, "Error creating user table: %s\nSteps completed successfully: 1/2\n", err_msg);

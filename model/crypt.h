@@ -12,7 +12,7 @@
 #define CRYPT_OK 1
 #define SHA256_DIGEST_LENGTH 32
 
-#define SHA256_ITER_COUNT 10000
+#define SHA256_ITER_COUNT 0
 
 #define B64_ENCODED_LENGTH(input_length) (4 * ((input_length + 2) / 3) + 1)
 

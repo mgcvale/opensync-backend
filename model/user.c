@@ -39,6 +39,7 @@ User *create_new_user(const char *uname, int s_uname, const char *pwd) {
 
     int code = gensalt_raw(salt_blob, TOKEN_SIZE);
     if (code != 1) {
+        fprintf(stderr, "error generating salt");
         return NULL;
     }
 
@@ -46,6 +47,7 @@ User *create_new_user(const char *uname, int s_uname, const char *pwd) {
     char *hash = malloc(b64_encoded_length(SHA256_DIGEST_LENGTH));
     code = hash_password(pwd, salt_blob, hash, TOKEN_SIZE);
     if (code != CRYPT_OK) {
+        fprintf(stderr, "error generating hash: %d\n", code);
         return NULL;
     }
 
@@ -55,6 +57,7 @@ User *create_new_user(const char *uname, int s_uname, const char *pwd) {
     if (code != 1) {
         free(hash);
         free(token);
+        fprintf(stderr, "error generating token");
         return NULL;
     }
 
