@@ -1,6 +1,6 @@
-# Hyprsync-backend
+# opensync-backend
 
-This is the source code for the backend API for the Hyprsync project, made using mongoose with C.
+This is the source code for the backend API for the opensync project, made using mongoose with C.
 
 ## Building
 
