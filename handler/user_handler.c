@@ -16,8 +16,6 @@ void root_user_handler(struct mg_connection* conn, struct mg_http_message *http_
         return user_getall_handler(conn, http_msg);
     } else if (mg_strcmp(http_msg->uri, mg_str("/user/delete")) == 0) {
         return user_delete_handler(conn, http_msg);
-    } else if (mg_strcmp(http_msg->uri, mg_str("/user/getbyid")) == 0) {
-        return user_get_by_id_handler(conn, http_msg);
     } else if (mg_strcmp(http_msg->uri, mg_str("/user/auth")) == 0) {
         return user_auth_by_pwd_handler(conn, http_msg);
     }
@@ -87,13 +85,69 @@ void user_getall_handler(struct mg_connection* conn, struct mg_http_message* htt
         return default_500(conn);
     }
 
-    cJSON *list = jsonify_list(*users);
+    int user_json_len = B64_ENCODED_LENGTH(TOKEN_SIZE + SHA256_DIGEST_LENGTH) + TOKEN_SIZE + MAX_USERNAME_LENGTH + 10 + 28;
+    int response_len = 3 + users->count * (user_json_len + 1);
+
+    // Allocate memory for response dynamically
+    char *response = malloc(response_len);
+    if (!response) {
+        // Handle memory allocation error
+        return default_500(conn);
+    }
+    response[0] = '[';
+    response[1] = '\0';
+
+    _user_node *current = users->head;
+    int offset = 1; // Start after the '['
+
+    while (current) {
+        char user_json[user_json_len];
+        int written = snprintf(user_json, user_json_len,
+                               "{"
+                               "\"id\": %d,"
+                               "\"username\": \"%s\","
+                               "\"hash\": \"%s\","
+                               "\"token\": \"%s\","
+                               "\"salt\": \"%s\""
+                               "}",
+                               current->user->id,
+                               current->user->uname,
+                               current->user->pwd_hash,
+                               current->user->token,
+                               current->user->salt
+        );
+
+        if (written < 0 || written >= user_json_len) {
+            // Handle snprintf error or overflow
+            free(response);
+            return default_500(conn);
+        }
+
+        // Append user_json to response
+        if (offset + written < response_len - 1) {
+            memcpy(response + offset, user_json, written);
+            offset += written;
+            response[offset++] = ',';  // Add comma between user JSON objects
+        } else {
+            // Handle buffer overflow
+            free(response);
+            return default_500(conn);
+        }
+
+        current = current->next;
+    }
+
+    // Replace the last comma with the closing bracket
+    if (users->count > 0) {
+        response[offset - 1] = ']';  // Overwrite last comma
+    } else {
+        response[offset++] = ']';
+    }
+    response[offset] = '\0';
+
     free_User_list(users);
-    char *response = cJSON_PrintUnformatted(list);
 
     mg_http_reply(conn, 200, "Content-Type: application/json\r\n", "%s", response);
-    free(response);
-    cJSON_Delete(list);
 }
 
 void user_delete_handler(struct mg_connection *conn, struct mg_http_message *http_msg) {
@@ -125,56 +179,6 @@ void user_delete_handler(struct mg_connection *conn, struct mg_http_message *htt
     }
 
     return default_200(conn);
-}
-
-
-void user_get_by_id_handler(struct mg_connection* conn, struct mg_http_message* http_msg) {
-    if (mg_strcmp(http_msg->method, mg_str("GET"))) {
-        return default_405(conn);
-    }
-
-    cJSON *user_data = cJSON_ParseWithLength(http_msg->body.buf, http_msg->body.len);
-    if (user_data == NULL) {
-        MG_ERROR(("Error parsing JSON in /user/getbyid"));
-        return default_400(conn);
-    }
-
-    cJSON *id = cJSON_GetObjectItemCaseSensitive(user_data, "id");
-    if (!cJSON_IsNumber(id)) {
-        MG_ERROR(("Error parsing `id` field of JSON in /user/getbyid"));
-        cJSON_Delete(user_data);
-        return default_400(conn);
-    }
-
-    User *user;
-    int rc = get_user_by_id(cJSON_GetNumberValue(id), &user);
-    cJSON_Delete(user_data);
-    if (rc == ERR_DB_QUERY) {
-        MG_ERROR(("No user found in /user/getbyid"));
-        return default_404(conn);
-    } else if (rc != OK) {
-        MG_ERROR(("Error connecting to database in /user/getbyid"));
-        return default_500(conn);
-    }
-
-    if (user == NULL) {
-        MG_ERROR(("Error creating user from data in /user/getbyid"));
-        return default_500(conn);
-    }
-
-    cJSON *userJson = jsonify_user(user);
-    if (userJson == NULL) {
-        free_user(user);
-        MG_ERROR(("Error jsonifying user in /user/getbyid"));
-        return default_500(conn);
-    }
-
-    char *response = cJSON_PrintUnformatted(userJson);
-
-    mg_http_reply(conn, 200, "Content-Type: application/json\r\n", "%s", response);
-    free(response);
-    free_user(user);
-    cJSON_Delete(userJson);
 }
 
 void user_auth_by_pwd_handler(struct mg_connection *conn, struct mg_http_message *http_msg) {

@@ -16182,6 +16182,7 @@ static void ladder_part2(mg_fe xs[5], const mg_fe x1) {
   sqr1(z3);         // z3 = (DA-CB)^2
   mul1(z3, x1);     // z3 = x1 * (DA-CB)^2
   sqr1(x3);         // x3 = (DA+CB)^2
+
   mul1(z2, x2);     // z2 = AA*(E*a24+AA)
   sub(x2, t1, x2);  // x2 = BB again
   mul1(x2, t1);     // x2 = AA*BB
@@ -17594,7 +17595,8 @@ static uint16_t eth_read_phy(uint8_t addr, uint8_t reg) {
                         GMAC_MAN_OP(2) |  // Setting the read operation
                         GMAC_MAN_WTN(2) | GMAC_MAN_PHYA(addr) |  // PHY address
                         GMAC_MAN_REGA(reg);  // Setting the register
-  while (!(GMAC_REGS->GMAC_NSR & GMAC_NSR_IDLE_Msk)) (void) 0;
+                        while (!(GMAC_REGS->GMAC_NSR & GMAC_NSR_IDLE_Msk)) (void)
+                          0;
   return GMAC_REGS->GMAC_MAN & GMAC_MAN_DATA_Msk;  // Getting the read value
 }
 
@@ -18766,6 +18768,7 @@ static size_t mg_tcpip_driver_xmc_tx(const void *buf, size_t len,
   } else {
     memcpy(s_txbuf[s_txno], buf, len);
     s_txdesc[s_txno][1] = len;
+
     // Table 13-19 Transmit Descriptor Word 0 (IC, LS, FS, TCH)
     s_txdesc[s_txno][0] = MG_BIT(30) | MG_BIT(29) | MG_BIT(28) | MG_BIT(20);
     s_txdesc[s_txno][0] |= MG_BIT(31);  // OWN bit: handle control to DMA

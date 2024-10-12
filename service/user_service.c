@@ -51,7 +51,7 @@ int add_user(User *user) {
 
 
 /* Caller shouln't malloc User. It should be null) */
-int get_user_by_id(int userid, User **user) {
+static int get_user_by_id(int userid, User **user) {
     const char sql[] = "select * from user where id=?";
     sqlite3_stmt *stmt;
     int rc;
