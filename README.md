@@ -14,6 +14,9 @@ In Arch Linux, you can run:
 
 `sudo pacman -S sqlite openssl cjson`
 
+And on openSUSE, you can get them via:
+`sudo zypper install sqlite3-devel openssl-devel cJSON-devel`
+
 You will also need ninja and CMake, of course.
 
 After installing the libs, you can create a build directory, run cmake, and then ninja:
