@@ -120,6 +120,7 @@ void user_list_append(User_list *list, User *user) {
         list->count++;
     }
 }
+
 cJSON *jsonify_user(User *user) {
     cJSON *user_json = cJSON_CreateObject();
     cJSON_AddNumberToObject(user_json, "id", user->id);

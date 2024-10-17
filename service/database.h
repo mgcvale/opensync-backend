@@ -15,6 +15,7 @@
 #define NO_AFFECTED_ROWS -10
 #define ERR_USERLIST_CREATION -11
 #define ERR_INVALID_CREDENTIALS -12
+#define ERR_BUFFER_TOO_SMALL -13
 #define OK 0
 
 sqlite3* get_connection();

@@ -1,5 +1,4 @@
 #include "defaults.h"
-#include <microhttpd.h>
 #include <string.h>
 
 void default_400(struct mg_connection* conn) {
