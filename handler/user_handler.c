@@ -78,18 +78,18 @@ void user_delete_handler(struct mg_connection *conn, struct mg_http_message *htt
         return default_400(conn);
     }
 
-    cJSON *id = cJSON_GetObjectItemCaseSensitive(user_data, "id");
-    if (!cJSON_IsNumber(id)) {
-        MG_ERROR(("Error parsing `id` field of JSON in /user/delete"));
+    cJSON *token = cJSON_GetObjectItemCaseSensitive(user_data, "token");
+    if (!cJSON_IsString(token) || token->valuestring == NULL) {
+        MG_ERROR(("Error parsing `token` field of JSON in /user/delete"));
         cJSON_Delete(user_data);
         return default_400(conn);
     }
 
-    int rc = remove_user_by_id(cJSON_GetNumberValue(id));
+    int rc = remove_user_by_token(token->valuestring);
     cJSON_Delete(user_data);
     if (rc == NO_AFFECTED_ROWS) {
         MG_ERROR(("No user found in /user/delete"));
-        return default_404(conn);
+        return default_401(conn);
     } else if (rc != OK) {
         MG_ERROR(("Error connecting to database in /user/delete"));
         return default_500(conn);

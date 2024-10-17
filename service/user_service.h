@@ -4,7 +4,7 @@
 #include "../model/user.h"
 
 int add_user(User *user); //implemented
-int remove_user_by_id(int userid); //implemented
+int remove_user_by_token(const char *token); //implemented
 int update_user(User *user); // TODO: implement
 int get_user_by_id(int id, User **user); // implemented
 int get_users_as_list(User_list **list); // implemented

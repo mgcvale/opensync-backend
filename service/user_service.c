@@ -26,8 +26,8 @@ int add_user(User *user) {
     }
 
     sqlite3_bind_text(stmt, 1, user->uname, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, user->token, sizeof(user->token), SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 3, user->pwd_hash, sizeof(user->pwd_hash), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, user->token, strlen(user->token), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, user->pwd_hash, strlen(user->pwd_hash), SQLITE_STATIC);
     sqlite3_bind_blob(stmt, 4, user->salt, sizeof(user->salt), SQLITE_STATIC);
 
     rc = sqlite3_step(stmt);
@@ -261,9 +261,8 @@ int get_token_by_pwd(char* token, const char* uname, const char* pwd) { // assum
     return OK;
 }
 
-
-int remove_user_by_id(int userid) {
-    const char *sql = "delete from user where id=?";
+int remove_user_by_token(const char *token) {
+    const char *sql = "delete from user where token=?";
     sqlite3_stmt *stmt;
     int rc;
     sqlite3 *db = get_connection();
@@ -281,7 +280,7 @@ int remove_user_by_id(int userid) {
         return ERR_DB_PREPARED_STMT;
     }
 
-    sqlite3_bind_int(stmt, 1, userid);
+    sqlite3_bind_text(stmt, 1, token, strlen(token), SQLITE_STATIC);
 
     rc = sqlite3_step(stmt);
     if (sqlite3_changes(db) == 0) {
