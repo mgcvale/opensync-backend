@@ -1,5 +1,6 @@
 #include <curl/curl.h>
 #include "unity.h"
+#include "tests.c"
 #include <string.h>
 #include <stdlib.h>
 

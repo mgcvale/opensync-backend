@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
     }
 
     mg_mgr_free(&mongoose_mgr);
+    db_cleanup();
 
     return 0;
 }
