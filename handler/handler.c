@@ -24,6 +24,10 @@ void handler(struct mg_connection *conn, int event_type, void *event_data) {
             return root_user_handler(conn, http_msg);
         }
 
+        if (mg_strcmp(http_msg->uri, mg_str("/")) == 0) {
+            default_200(conn);
+        }
+
         default_404(conn);
     }
 }

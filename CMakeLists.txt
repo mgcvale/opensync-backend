@@ -35,7 +35,7 @@ add_executable(opensync-backend
     util/util.c
 )
 
-target_link_libraries(opensync-backend ${SQLite3_LIBRARIES} ${CJSON_LIBRARIES} ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
-target_include_directories(opensync-backend PRIVATE external/mongoose)
+target_link_libraries(opensync-backend ${SQLite3_LIBRARIES} ${CJSON_LIBRARIES} ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY} ${CURL_LIBRARIES})
+target_include_directories(opensync-backend PRIVATE external/mongoose external/unity)
 
 install(TARGETS opensync-backend RUNTIME DESTINATION bin)
