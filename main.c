@@ -5,6 +5,7 @@
 #include "handler/handler.h"
 #include "migrate.c"
 #include "mongoose.h"
+#include "service/database.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -18,12 +19,23 @@ static void signal_handler(int sig_num) {
 }
 
 int main(int argc, char *argv[]) {
-
-    if (argc == 2 && strcmp("migrate", argv[1]) == 0) {
-        return migrate();
+    int rc;
+    if (argc > 1) {
+        if (strcmp("migrate", argv[1]) == 0) {
+            return migrate(argc, argv);
+        } else {
+            printf("starting server...\n");
+            rc = db_initialize(argv[1], strlen(argv[1]));
+        }
+    } else {
+        printf("starting server...\n");
+        rc = db_initialize("database.db", strlen("database.db"));
     }
 
-    printf("starting server...\n");
+    if (rc != 0) {
+        fprintf(stderr, "FATAL: Error initializing database! Exiting now...");
+        return -1;
+    }
 
     struct mg_mgr mongoose_mgr;
     mg_log_set(MG_LL_DEBUG);

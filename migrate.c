@@ -1,7 +1,7 @@
 #include <sqlite3.h>
 #include <stdio.h>
 
-int migrate() {
+int migrate(int argc, char *argv[]) {
     sqlite3 *db;
     char* err_msg = 0;
     int rc;
@@ -10,7 +10,11 @@ int migrate() {
     printf("[MIGRATION] starting migration...\n");
     printf("---->DB Creation (1/2)<----\n");
 
-    rc = sqlite3_open("database.db", &db);
+    if (argc > 2) {
+        rc = sqlite3_open(argv[2], &db);
+    } else {
+        rc = sqlite3_open("database.db", &db);
+    }
 
     if (rc) {
         fprintf(stderr, "Error opening database: %s\nSteps completed successfully: 0/2\n", sqlite3_errmsg(db));

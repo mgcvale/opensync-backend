@@ -19,5 +19,6 @@
 #define OK 0
 
 sqlite3* get_connection();
+int db_initialize(const char *name, int len);
 
 #endif
