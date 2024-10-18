@@ -16,6 +16,8 @@ void root_user_handler(struct mg_connection* conn, struct mg_http_message *http_
         return user_delete_handler(conn, http_msg);
     } else if (mg_strcmp(http_msg->uri, mg_str("/user/getbypwd")) == 0) {
         return user_auth_by_pwd_handler(conn, http_msg);
+    } else if (mg_strcmp(http_msg->uri, mg_str("/user/getbytoken")) == 0)  {
+        return user_auth_by_token_handler(conn, http_msg);;
     } else if (mg_strcmp(http_msg->uri, mg_str("/user/auth")) == 0) {
         return user_gettoken_handler(conn, http_msg);
     }
@@ -138,8 +140,8 @@ void user_auth_by_pwd_handler(struct mg_connection *conn, struct mg_http_message
         return default_500(conn);
     }
 
-    cJSON *userJson = jsonify_user(user);
-    free(user);
+    cJSON *userJson = jsonify_user(user); // TODO: stop using json and create tostring function in user.c instead
+    free_user(user);
     if (userJson == NULL) {
         MG_ERROR(("Error jsonifying result user in /user/getbypwd"));
         return default_500(conn);
@@ -151,6 +153,47 @@ void user_auth_by_pwd_handler(struct mg_connection *conn, struct mg_http_message
     free(response);
     conn->is_draining = 1;
 }
+
+void user_auth_by_token_handler(struct mg_connection* conn, struct mg_http_message* http_msg) {
+    if (mg_strcmp(http_msg->method, mg_str("POST"))) {
+        return default_405(conn);;
+    }
+
+    cJSON *user_data = cJSON_ParseWithLength(http_msg->body.buf, http_msg->body.len);
+    if (user_data == NULL) {
+        MG_ERROR(("Error parsing JSON in /user/getbypwd"));
+        return default_400(conn);
+    }
+
+    cJSON *token = cJSON_GetObjectItemCaseSensitive(user_data, "token");
+    if (!cJSON_IsString(token) || token->valuestring == NULL) {
+        MG_ERROR(("Error parsing `token` field of JSON in /user/delete"));
+        cJSON_Delete(user_data);
+        return default_400(conn);
+    }
+
+    User *user = NULL;
+    int rc = auth_user_by_token(&user, token->valuestring);
+    cJSON_Delete(user_data);
+    if (rc == DB_NO_RESULT) {
+        MG_ERROR(("No user found on /user/getbytoken"));
+        return default_500(conn);
+    }
+
+    cJSON *userJson = jsonify_user(user); // TODO: stop using json and create tostring function in user.c instead
+    free_user(user);
+    if (userJson == NULL) {
+        MG_ERROR(("Error jsonifying result user in /user/getbytoken"));
+        return default_500(conn);
+    }
+
+    char *response = cJSON_PrintUnformatted(userJson);
+    mg_http_reply(conn, 200, "Content-Type: application/json\n\r", response);
+    cJSON_Delete(userJson);
+    free(response);
+    conn->is_draining = 1;
+}
+
 
 void user_gettoken_handler(struct mg_connection* conn, struct mg_http_message* http_msg) {
     if (mg_strcmp(http_msg->method, mg_str("POST"))) {

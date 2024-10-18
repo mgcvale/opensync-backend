@@ -1,5 +1,5 @@
-#ifndef HYPRSYNC_BACKEND_USER_H
-#define HYPRSYNC_BACKEND_USER_H
+#ifndef OPENSYNCOPENSYNC_USER_H
+#define OPENSYNCOPENSYNC_USER_H
 
 #include <cjson/cJSON.h>
 #include <stdlib.h>
@@ -37,6 +37,4 @@ User **to_user_array(User_list list, size_t *size);
 cJSON *jsonify_user(User *user);
 cJSON *jsonify_list(User_list list);
 void free_User_list(User_list *list);
-
-
 #endif

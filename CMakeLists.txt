@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(hyprsync-backend LANGUAGES C)
+project(opensync-backend LANGUAGES C)
 
 find_package(PkgConfig REQUIRED)
 find_package(SQLite3 REQUIRED)
@@ -9,7 +9,7 @@ find_package(OpenSSL REQUIRED)
 
 add_library(mongoose STATIC external/mongoose/mongoose.c)
 
-add_executable(hyprsync-backend
+add_executable(opensync-backend
     main.c
     handler/handler.h
     handler/handler.c
@@ -35,7 +35,7 @@ add_executable(hyprsync-backend
     util/util.c
 )
 
-target_link_libraries(hyprsync-backend ${SQLite3_LIBRARIES} ${CJSON_LIBRARIES} ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
-target_include_directories(hyprsync-backend PRIVATE external/mongoose)
+target_link_libraries(opensync-backend ${SQLite3_LIBRARIES} ${CJSON_LIBRARIES} ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
+target_include_directories(opensync-backend PRIVATE external/mongoose)
 
-install(TARGETS hyprsync-backend RUNTIME DESTINATION bin)
+install(TARGETS opensync-backend RUNTIME DESTINATION bin)

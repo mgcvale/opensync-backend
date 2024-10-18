@@ -1,5 +1,5 @@
-#ifndef HYPRSYNC_BACKEND_DEFAULTS_H
-#define HYPRSYNC_BACKEND_DEFAULTS_H
+#ifndef OPENSYNCOPENSYNC_DEFAULTS_H
+#define OPENSYNCOPENSYNC_DEFAULTS_H
 
 #include "mongoose.h"
 
@@ -17,4 +17,4 @@ void default_409(struct mg_connection *conn);
 
 void default_401(struct mg_connection *conn);
 
-#endif //HYPRSYNC_BACKEND_DEFAULTS_H
+#endif //OPENSYNCOPENSYNC_DEFAULTS_H

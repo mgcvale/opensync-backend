@@ -156,14 +156,14 @@ int auth_user_by_pwd(User **out, const char *uname, const char *pwd) {
     return OK;
 }
 
-int auth_user_by_token(User **user, const char *uname, const char *pwd) {
+int auth_user_by_token(User **user, const char *token) {
     sqlite3 *db = get_connection();
 
     if (db == NULL) {
         return ERR_DB_CREATION;
     }
 
-    const char sql[] = "select * from user where token=?";
+    const char sql[] = "select id, username, password_hash, salt from user where token=?";
     sqlite3_stmt *stmt;
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
@@ -172,7 +172,7 @@ int auth_user_by_token(User **user, const char *uname, const char *pwd) {
         return ERR_DB_PREPARED_STMT;
     }
 
-    sqlite3_bind_text(stmt, 1, uname, strlen(uname), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, token, strlen(token), SQLITE_STATIC);
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_DONE) {
         sqlite3_finalize(stmt);
@@ -187,8 +187,7 @@ int auth_user_by_token(User **user, const char *uname, const char *pwd) {
     int id = sqlite3_column_int(stmt, 0);
     const char *username = (char*) sqlite3_column_text(stmt, 1);
     const char *pwd_hash = (char*) sqlite3_column_text(stmt, 2);
-    const char *token = (char*) sqlite3_column_text(stmt, 3);
-    const unsigned char *salt = (unsigned char*) sqlite3_column_blob(stmt, 4);
+    const unsigned char *salt = (unsigned char*) sqlite3_column_blob(stmt, 3);
 
     (*user) = load_user(id, username, strlen(username), pwd_hash, salt, token);
     if (*user == NULL) {

@@ -1,5 +1,5 @@
-#ifndef HYPRSYNC_BACKEND_CRYPT_H
-#define HYPRSYNC_BACKEND_CRYPT_H
+#ifndef OPENSYNCOPENSYNC_CRYPT_H
+#define OPENSYNCOPENSYNC_CRYPT_H
 
 #define DEFAULT_SALT_LENGTH 16
 #define ERR_EVP_CTX_CREATION -1
@@ -24,4 +24,4 @@ int hash_password(const char* password, const unsigned char *salt, char *hash, s
 int gentoken( char *token, size_t length);
 size_t b64_encoded_length(size_t input_length);
 
-#endif //HYPRSYNC_BACKEND_CRYPT_H
+#endif //OPENSYNCOPENSYNC_CRYPT_H
