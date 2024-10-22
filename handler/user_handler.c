@@ -94,7 +94,7 @@ void user_delete_handler(struct mg_connection *conn, struct mg_http_message *htt
 }
 
 void user_auth_by_pwd_handler(struct mg_connection *conn, struct mg_http_message *http_msg) {
-    if (mg_strcmp(http_msg->method, mg_str("GET"))) {
+    if (mg_strcmp(http_msg->method, mg_str("POST"))) {
         return default_405(conn);
     }
 

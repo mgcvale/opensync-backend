@@ -2,7 +2,6 @@
 #include "user_handler.h"
 #include "../util/util.h"
 #include "defaults.h"
-
 #include "mongoose.h"
 #include <string.h>
 #include <stdio.h>

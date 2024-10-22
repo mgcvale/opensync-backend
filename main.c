@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     }
 
     struct mg_mgr mongoose_mgr;
-    mg_log_set(MG_LL_DEBUG);
+    mg_log_set(MG_LL_NONE);
     mg_mgr_init(&mongoose_mgr);
 
     signal(SIGINT, signal_handler);

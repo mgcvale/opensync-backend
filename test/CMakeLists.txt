@@ -7,6 +7,10 @@ add_library(unity STATIC ../external/unity/unity.c)
 
 add_executable(opensync-test
     test_server.c
+    tests.c
+    tests.h
+    util.c
+    util.h
 
     ../external/unity/unity.h
     ../external/unity/unity_internals.h
