@@ -67,7 +67,9 @@ void user_create_handler(struct mg_connection* conn, struct mg_http_message *htt
         return default_500(conn);
     }
 
-    return default_200(conn);
+    char response[256];
+    snprintf(response, 128, "{\"message\": \"success\", \"token\": \"%s\"}", user->token);
+    mg_http_reply(conn, 200, "Content-Type: application/json\n\r", response);
 }
 
 void user_delete_handler(struct mg_connection *conn, struct mg_http_message *http_msg) {
