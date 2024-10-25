@@ -81,9 +81,14 @@ int main(int argc, char *argv[]) {
 
     UNITY_BEGIN();
     RUN_TEST(test_addUserShouldReturnSuccess);
-    RUN_TEST(test_addUserShouldReturnConflictWhenUsernameIsTaken);
-    RUN_TEST(test_userLoginFailsWhenPasswordIsIncorrect);
-    RUN_TEST(test_userLoginSucceedsWhenPasswordIsCorrect);
+    RUN_TEST(test_addUserConflictsWhenUsernameIsAlreadyTaken);
+    RUN_TEST(test_userGetByPasswordFailsWhenPasswordIsIncorrect);
+    RUN_TEST(test_userGetByPasswordSucceedsWhenPasswordIsCorrect);
+    RUN_TEST(test_userGetByTokenFailsWhenTokenIsIncorrect);
+    RUN_TEST(test_userGetByTokenSucceedsWhenTokenIsCorrect);
+    RUN_TEST(test_userGetByTokenFailsWhenTokenIsMissing);
+    RUN_TEST(test_userAuthenticationSucceedsWhenPasswordIsCorrect);
+    RUN_TEST(test_userAuthenticationFailsWhenPasswordIsIncorrect);
     UNITY_END();
 
     printf("\n\n-----> finished tests <-----\n\n");

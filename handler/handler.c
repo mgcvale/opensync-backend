@@ -19,6 +19,7 @@ void handler(struct mg_connection *conn, int event_type, void *event_data) {
     if (event_type == MG_EV_HTTP_MSG) {
         struct mg_http_message *http_msg = (struct mg_http_message *) event_data;
 
+        printf("Requested URI: %.*s\n", (int) http_msg->uri.len, http_msg->uri.buf);
         if (prefix("/user/", http_msg->uri.buf)) {
             return root_user_handler(conn, http_msg);
         }

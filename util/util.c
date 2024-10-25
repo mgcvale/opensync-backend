@@ -13,6 +13,9 @@ bool extract_token(struct mg_http_message* http_msg, char* token_out, size_t tok
     size_t bearer_prefix_len = strlen(bearer_prefix);
 
     // Get the Authorization header
+    for (int i = 0; i < 30; i++) {
+        printf("%s", http_msg->headers[i].name.buf);
+    }
     struct mg_str *auth_header = mg_http_get_header(http_msg, "Authorization");
     if (auth_header == NULL) {
         fprintf(stderr, "Error parsing auth token: missing authorization header\n");

@@ -22,7 +22,6 @@ void root_user_handler(struct mg_connection* conn, struct mg_http_message *http_
     } else if (mg_strcmp(http_msg->uri, mg_str("/user/auth")) == 0) {
         return user_gettoken_handler(conn, http_msg);
     }
-
     return default_404(conn);
 }
 
@@ -40,12 +39,14 @@ void user_create_handler(struct mg_connection* conn, struct mg_http_message *htt
 
     cJSON *username = cJSON_GetObjectItemCaseSensitive(user_data, "username");
     if (!cJSON_IsString(username) || username->valuestring == NULL) { // double check in case the string is empty
+        cJSON_Delete(user_data);
         MG_ERROR(("Error reading `username` field in json in /user/create"));
         return default_400(conn);
     }
 
     cJSON *pwd = cJSON_GetObjectItemCaseSensitive(user_data, "password");
     if (!cJSON_IsString(pwd) || pwd->valuestring == NULL) {
+        cJSON_Delete(user_data);
         MG_ERROR(("Error reading `password` field in json in /user/create"));
         return default_400(conn);
     }
@@ -70,6 +71,7 @@ void user_create_handler(struct mg_connection* conn, struct mg_http_message *htt
     char response[256];
     snprintf(response, 128, "{\"message\": \"success\", \"token\": \"%s\"}", user->token);
     mg_http_reply(conn, 200, "Content-Type: application/json\n\r", response);
+    conn->is_draining = 1;
 }
 
 void user_delete_handler(struct mg_connection *conn, struct mg_http_message *http_msg) {
@@ -164,7 +166,7 @@ void user_auth_by_token_handler(struct mg_connection* conn, struct mg_http_messa
     int rc = auth_user_by_token(&user, token);
     if (rc == DB_NO_RESULT) {
         MG_ERROR(("No user found on /user/getbytoken. Check your token."));
-        return default_500(conn);
+        return default_401(conn);
     }
 
     cJSON *userJson = jsonify_user(user); // TODO: stop using json and create tostring function in user.c instead
@@ -175,6 +177,7 @@ void user_auth_by_token_handler(struct mg_connection* conn, struct mg_http_messa
     }
 
     char *response = cJSON_PrintUnformatted(userJson);
+
     mg_http_reply(conn, 200, "Content-Type: application/json\n\r", response);
     cJSON_Delete(userJson);
     free(response);

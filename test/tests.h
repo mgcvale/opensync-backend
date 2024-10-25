@@ -2,13 +2,16 @@
 #define OPENSYNC_TEST_TESTS_H
 
 void test_addUserShouldReturnSuccess();
-void test_addUserShouldReturnConflictWhenUsernameIsTaken();
-void test_userLoginSucceedsWhenPasswordIsCorrect();
-void test_userLoginFailsWhenPasswordIsIncorrect();
-void test_userAuthenticationSuccedsWhenTokenIsCorrect();
-void test_userAuthenticationFailsWhenTokenIsIncorrect();
+void test_addUserConflictsWhenUsernameIsAlreadyTaken();
+void test_userGetByPasswordSucceedsWhenPasswordIsCorrect();
+void test_userGetByPasswordFailsWhenPasswordIsIncorrect();
+void test_userAuthenticationSucceedsWhenPasswordIsCorrect();
+void test_userAuthenticationFailsWhenPasswordIsIncorrect();
 void test_userDeletionSuccedsWhenTokenIsCorrect();
 void test_userDeletionFailsWhenTokenIsIncorrect();
+void test_userGetByTokenSucceedsWhenTokenIsCorrect();
+void test_userGetByTokenFailsWhenTokenIsIncorrect();
+void test_userGetByTokenFailsWhenTokenIsMissing();
 
 
 #endif //OPENSYNC_TEST_TESTS_H
