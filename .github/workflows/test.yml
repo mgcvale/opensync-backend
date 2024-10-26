@@ -1,0 +1,32 @@
+version: '3.8'
+
+name: Run Tests on Push to Testing Branch
+
+on:
+  push:
+    branches:
+      - testing
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+    
+      - name: Build Docker Image
+        run: docker build -t opensync-test .
+
+      - name: Run Tests on Docker Image
+        run: |
+          docker run --rm opensync-test || exit 1
+
+      - name: Check Test Results
+        if: failure()
+        run: echo "One or more tests failed."
+        continue-on-error: true
+
