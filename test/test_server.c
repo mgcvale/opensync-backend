@@ -91,6 +91,8 @@ int main(int argc, char *argv[]) {
     RUN_TEST(test_userAuthenticationFailsWhenPasswordIsIncorrect);
     UNITY_END();
 
+    int failed_tests = Unity.TestFailures;
+
     printf("\n\n-----> finished tests <-----\n\n");
-    exit(EXIT_FAILURE);
+    return failed_tests;
 }
