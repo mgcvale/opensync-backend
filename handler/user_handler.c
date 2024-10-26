@@ -4,6 +4,7 @@
 #include "mongoose.h"
 #include "defaults.h"
 #include "cjson/cJSON.h"
+#include "../util/util.h"
 #include "../service/user_service.h"
 #include "../model/user.h"
 #include <sqlite3.h>
@@ -17,11 +18,10 @@ void root_user_handler(struct mg_connection* conn, struct mg_http_message *http_
     } else if (mg_strcmp(http_msg->uri, mg_str("/user/getbypwd")) == 0) {
         return user_auth_by_pwd_handler(conn, http_msg);
     } else if (mg_strcmp(http_msg->uri, mg_str("/user/getbytoken")) == 0)  {
-        return user_auth_by_token_handler(conn, http_msg);;
+        return user_auth_by_token_handler(conn, http_msg);
     } else if (mg_strcmp(http_msg->uri, mg_str("/user/auth")) == 0) {
         return user_gettoken_handler(conn, http_msg);
     }
-
     return default_404(conn);
 }
 
@@ -39,12 +39,14 @@ void user_create_handler(struct mg_connection* conn, struct mg_http_message *htt
 
     cJSON *username = cJSON_GetObjectItemCaseSensitive(user_data, "username");
     if (!cJSON_IsString(username) || username->valuestring == NULL) { // double check in case the string is empty
+        cJSON_Delete(user_data);
         MG_ERROR(("Error reading `username` field in json in /user/create"));
         return default_400(conn);
     }
 
     cJSON *pwd = cJSON_GetObjectItemCaseSensitive(user_data, "password");
     if (!cJSON_IsString(pwd) || pwd->valuestring == NULL) {
+        cJSON_Delete(user_data);
         MG_ERROR(("Error reading `password` field in json in /user/create"));
         return default_400(conn);
     }
@@ -66,7 +68,10 @@ void user_create_handler(struct mg_connection* conn, struct mg_http_message *htt
         return default_500(conn);
     }
 
-    return default_200(conn);
+    char response[256];
+    snprintf(response, 128, "{\"message\": \"success\", \"token\": \"%s\"}", user->token);
+    mg_http_reply(conn, 200, "Content-Type: application/json\n\r", response);
+    conn->is_draining = 1;
 }
 
 void user_delete_handler(struct mg_connection *conn, struct mg_http_message *http_msg) {
@@ -74,21 +79,13 @@ void user_delete_handler(struct mg_connection *conn, struct mg_http_message *htt
         return default_405(conn);
     }
 
-    cJSON *user_data = cJSON_ParseWithLength(http_msg->body.buf, http_msg->body.len);
-    if (user_data == NULL) {
-        MG_ERROR(("Error parsing JSON in /user/delete"));
-        return default_400(conn);
+    char token[25];
+    if (!extract_token(http_msg, token, 25)) {
+        MG_ERROR(("Error gathering token bearer in Authentication header."));
+        return default_401(conn);
     }
 
-    cJSON *token = cJSON_GetObjectItemCaseSensitive(user_data, "token");
-    if (!cJSON_IsString(token) || token->valuestring == NULL) {
-        MG_ERROR(("Error parsing `token` field of JSON in /user/delete"));
-        cJSON_Delete(user_data);
-        return default_400(conn);
-    }
-
-    int rc = remove_user_by_token(token->valuestring);
-    cJSON_Delete(user_data);
+    int rc = remove_user_by_token(token);
     if (rc == NO_AFFECTED_ROWS) {
         MG_ERROR(("No user found in /user/delete"));
         return default_401(conn);
@@ -101,7 +98,7 @@ void user_delete_handler(struct mg_connection *conn, struct mg_http_message *htt
 }
 
 void user_auth_by_pwd_handler(struct mg_connection *conn, struct mg_http_message *http_msg) {
-    if (mg_strcmp(http_msg->method, mg_str("GET"))) {
+    if (mg_strcmp(http_msg->method, mg_str("POST"))) {
         return default_405(conn);
     }
 
@@ -159,25 +156,17 @@ void user_auth_by_token_handler(struct mg_connection* conn, struct mg_http_messa
         return default_405(conn);;
     }
 
-    cJSON *user_data = cJSON_ParseWithLength(http_msg->body.buf, http_msg->body.len);
-    if (user_data == NULL) {
-        MG_ERROR(("Error parsing JSON in /user/getbypwd"));
-        return default_400(conn);
-    }
-
-    cJSON *token = cJSON_GetObjectItemCaseSensitive(user_data, "token");
-    if (!cJSON_IsString(token) || token->valuestring == NULL) {
-        MG_ERROR(("Error parsing `token` field of JSON in /user/delete"));
-        cJSON_Delete(user_data);
-        return default_400(conn);
+    char token[25];
+    if (!extract_token(http_msg, token, 25)) {
+        MG_ERROR(("Error gathering token bearer in Authentication header."));
+        return default_401(conn);
     }
 
     User *user = NULL;
-    int rc = auth_user_by_token(&user, token->valuestring);
-    cJSON_Delete(user_data);
+    int rc = auth_user_by_token(&user, token);
     if (rc == DB_NO_RESULT) {
-        MG_ERROR(("No user found on /user/getbytoken"));
-        return default_500(conn);
+        MG_ERROR(("No user found on /user/getbytoken. Check your token."));
+        return default_401(conn);
     }
 
     cJSON *userJson = jsonify_user(user); // TODO: stop using json and create tostring function in user.c instead
@@ -188,6 +177,7 @@ void user_auth_by_token_handler(struct mg_connection* conn, struct mg_http_messa
     }
 
     char *response = cJSON_PrintUnformatted(userJson);
+
     mg_http_reply(conn, 200, "Content-Type: application/json\n\r", response);
     cJSON_Delete(userJson);
     free(response);

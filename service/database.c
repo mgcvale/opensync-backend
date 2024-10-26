@@ -7,13 +7,20 @@
 static char *dbname;
 
 int db_initialize(const char *name, int len) {
-    dbname = malloc(len * sizeof(char));
+    dbname = malloc((len + 1) * sizeof(char));
     if (dbname == NULL) {
         return -1;
     }
 
     strncpy(dbname, name, len);
+    dbname[len] = '\0';
     return 0;
+}
+
+void db_cleanup() {
+    if (dbname != NULL) {
+        free(dbname);
+    }
 }
 
 sqlite3* get_connection() {
