@@ -5,6 +5,7 @@ hyprsync-backend
 # KDE
 *.kdev4
 .kdev4/
+*.kate-swp
 
 # db
 *.db
