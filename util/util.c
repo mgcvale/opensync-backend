@@ -41,3 +41,30 @@ bool extract_token(struct mg_http_message* http_msg, char* token_out, size_t tok
 
     return true;
 }
+
+char *util_get_file_contents(const char *path, int size) {
+    FILE *f = fopen(path, "r");
+
+    if (f == NULL) {
+        return NULL;
+    }
+
+    char *result = malloc(size + 1);
+    if (result == NULL) {
+        fclose(f);
+        return NULL;
+    }
+
+    result[0] = '\0';
+
+    char ch;
+    int index = 0;
+    while ((ch = fgetc(f)) != EOF && index < size) {
+        result[index] = ch;
+        index ++;
+    }
+
+    result[index] = '\0';
+    fclose(f);
+    return result;
+}

@@ -16,6 +16,10 @@
 #define ERR_USERLIST_CREATION -11
 #define ERR_INVALID_CREDENTIALS -12
 #define ERR_BUFFER_TOO_SMALL -13
+#define NO_RESULT -14
+#define ERR_NO_DIR_FOUND -15
+#define ERR_FILE_STORAGE -16
+#define ERR_FILE_FSEEK -17
 #define OK 0
 
 sqlite3* get_connection();

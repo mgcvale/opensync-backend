@@ -27,5 +27,5 @@ jobs:
       - name: Check Test Results
         if: failure()
         run: echo "One or more tests failed."
-        continue-on-error: true
+        continue-on-error: false
 

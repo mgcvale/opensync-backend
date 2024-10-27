@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include "mongoose.h"
 #include "defaults.h"
-#include "cjson/cJSON.h"
 #include "../util/util.h"
 #include "../service/user_service.h"
 #include "../model/user.h"
@@ -31,28 +30,15 @@ void user_create_handler(struct mg_connection* conn, struct mg_http_message *htt
         return default_405(conn);
     }
 
-    cJSON *user_data = cJSON_ParseWithLength(http_msg->body.buf, http_msg->body.len);
-    if (user_data == NULL) {
-        MG_ERROR(("Error reading json in /user/create"));
-        return default_400(conn);
+    char *uname = mg_json_get_str(http_msg->body, "$.username");
+    char *password = mg_json_get_str(http_msg->body, "$.password");
+    if (uname == NULL || password == NULL) {
+        MG_ERROR(("Error reading fields in /user/create.\n"));
     }
 
-    cJSON *username = cJSON_GetObjectItemCaseSensitive(user_data, "username");
-    if (!cJSON_IsString(username) || username->valuestring == NULL) { // double check in case the string is empty
-        cJSON_Delete(user_data);
-        MG_ERROR(("Error reading `username` field in json in /user/create"));
-        return default_400(conn);
-    }
-
-    cJSON *pwd = cJSON_GetObjectItemCaseSensitive(user_data, "password");
-    if (!cJSON_IsString(pwd) || pwd->valuestring == NULL) {
-        cJSON_Delete(user_data);
-        MG_ERROR(("Error reading `password` field in json in /user/create"));
-        return default_400(conn);
-    }
-
-    User *user = create_new_user(username->valuestring, strlen(username->valuestring), pwd->valuestring);
-    cJSON_Delete(user_data);
+    User *user = create_new_user(uname, strlen(uname), password);
+    free(uname);
+    free(password);
     if (user == NULL) {
         MG_ERROR(("Error creating new user in /user/create"));
         return default_500(conn);
@@ -69,7 +55,7 @@ void user_create_handler(struct mg_connection* conn, struct mg_http_message *htt
     }
 
     char response[256];
-    snprintf(response, 128, "{\"message\": \"success\", \"token\": \"%s\"}", user->token);
+    snprintf(response, 256, "{\"message\": \"success\", \"token\": \"%s\"}", user->token);
     mg_http_reply(conn, 200, "Content-Type: application/json\n\r", response);
     conn->is_draining = 1;
 }
@@ -102,29 +88,14 @@ void user_auth_by_pwd_handler(struct mg_connection *conn, struct mg_http_message
         return default_405(conn);
     }
 
-    cJSON *user_data = cJSON_ParseWithLength(http_msg->body.buf, http_msg->body.len);
-    if (user_data == NULL) {
-        MG_ERROR(("Error parsing JSON in /user/getbypwd"));
-        return default_400(conn);
-    }
-
-    cJSON *username = cJSON_GetObjectItemCaseSensitive(user_data, "username");
-    if (!cJSON_IsString(username) || username->valuestring == NULL) {
-        MG_ERROR(("Error parsing `username` field of JSON in /user/getbypwd"));
-        cJSON_Delete(user_data);
-        return default_400(conn);
-    }
-
-    cJSON *password = cJSON_GetObjectItemCaseSensitive(user_data, "password");
-    if (!cJSON_IsString(password) || password->valuestring == NULL) {
-        MG_ERROR(("Error parsing `password` field of JSON in /user/getbypwd"));
-        cJSON_Delete(user_data);
-        return default_400(conn);
+    char *uname = mg_json_get_str(http_msg->body, "$.username");
+    char *password = mg_json_get_str(http_msg->body, "$.password");
+    if (uname == NULL || password == NULL) {
+        MG_ERROR(("Error reading fields in /user/create.\n"));
     }
 
     User *user = NULL;
-    int rc = auth_user_by_pwd(&user, username->valuestring, password->valuestring);
-    cJSON_Delete(user_data);
+    int rc = auth_user_by_pwd(&user, uname, password);
 
     if (rc == ERR_INVALID_CREDENTIALS) {
         MG_ERROR(("Error authenticating user in /user/getbypwd - invalid credentials"));
@@ -137,17 +108,15 @@ void user_auth_by_pwd_handler(struct mg_connection *conn, struct mg_http_message
         return default_500(conn);
     }
 
-    cJSON *userJson = jsonify_user(user); // TODO: stop using json and create tostring function in user.c instead
+    char *user_json = to_json_string(user);
     free_user(user);
-    if (userJson == NULL) {
-        MG_ERROR(("Error jsonifying result user in /user/getbypwd"));
+    if (user_json == NULL) {
+        MG_ERROR(("Error jsonifying result user in /user/getbytoken"));
         return default_500(conn);
     }
 
-    char *response = cJSON_PrintUnformatted(userJson);
-    mg_http_reply(conn, 200, "Content-Type: application/json\n\r", response);
-    cJSON_Delete(userJson);
-    free(response);
+    mg_http_reply(conn, 200, "Content-Type: application/json\n\r", user_json);
+    free(user_json);
     conn->is_draining = 1;
 }
 
@@ -169,18 +138,15 @@ void user_auth_by_token_handler(struct mg_connection* conn, struct mg_http_messa
         return default_401(conn);
     }
 
-    cJSON *userJson = jsonify_user(user); // TODO: stop using json and create tostring function in user.c instead
+    char *user_json = to_json_string(user);
     free_user(user);
-    if (userJson == NULL) {
+    if (user_json == NULL) {
         MG_ERROR(("Error jsonifying result user in /user/getbytoken"));
         return default_500(conn);
     }
 
-    char *response = cJSON_PrintUnformatted(userJson);
-
-    mg_http_reply(conn, 200, "Content-Type: application/json\n\r", response);
-    cJSON_Delete(userJson);
-    free(response);
+    mg_http_reply(conn, 200, "Content-Type: application/json\n\r", user_json);
+    free(user_json);
     conn->is_draining = 1;
 }
 
@@ -190,29 +156,14 @@ void user_gettoken_handler(struct mg_connection* conn, struct mg_http_message* h
         return default_405(conn);
     }
 
-    cJSON *user_data = cJSON_ParseWithLength(http_msg->body.buf, http_msg->body.len);
-    if (user_data == NULL) {
-        MG_ERROR(("Error parsing JSON in /user/auth"));
-        return default_400(conn);
-    }
-
-    cJSON *uname = cJSON_GetObjectItemCaseSensitive(user_data, "username");
-    if (!cJSON_IsString(uname) || uname->valuestring == NULL) {
-        MG_ERROR(("Error parsing \"username\" field in JSON in /user/auth"));
-        cJSON_Delete(user_data);
-        return default_400(conn);
-    }
-
-    cJSON *pwd = cJSON_GetObjectItemCaseSensitive(user_data, "password");
-    if (!cJSON_IsString(pwd) || pwd->valuestring == NULL) {
-        MG_ERROR(("Error parsing \"password\" field in JSON in /user/auth"));
-        cJSON_Delete(user_data);
-        return default_400(conn);
+    char *uname = mg_json_get_str(http_msg->body, "$.username");
+    char *password = mg_json_get_str(http_msg->body, "$.password");
+    if (uname == NULL || password == NULL) {
+        MG_ERROR(("Error reading fields in /user/create.\n"));
     }
 
     char token[B64_ENCODED_LENGTH(TOKEN_SIZE)];
-    int rc = get_token_by_pwd(token, uname->valuestring, pwd->valuestring);
-    cJSON_Delete(user_data);
+    int rc = get_token_by_pwd(token, uname, password);
     if (rc == ERR_INVALID_CREDENTIALS || rc == DB_NO_RESULT) {
         MG_ERROR(("Invalid credentials or nonexistent user in /user/auth"));
         return default_401(conn);

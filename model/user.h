@@ -32,9 +32,10 @@ User* load_user(int id, const char *uname, int s_uname, const char *pwd_hash, co
 void free_user(User *user);
 
 User_list *user_list_create(void);
-void user_list_append(User_list *list, User *user);
+int user_list_append(User_list *list, User *user);
 User **to_user_array(User_list list, size_t *size);
 cJSON *jsonify_user(User *user);
 cJSON *jsonify_list(User_list list);
+char *to_json_string(User *user);
 void free_User_list(User_list *list);
 #endif

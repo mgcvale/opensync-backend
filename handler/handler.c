@@ -1,5 +1,6 @@
 #include "handler.h"
 #include "user_handler.h"
+#include "file_handler.h"
 #include "../util/util.h"
 #include "defaults.h"
 #include "mongoose.h"
@@ -22,6 +23,8 @@ void handler(struct mg_connection *conn, int event_type, void *event_data) {
         printf("Requested URI: %.*s\n", (int) http_msg->uri.len, http_msg->uri.buf);
         if (prefix("/user/", http_msg->uri.buf)) {
             return root_user_handler(conn, http_msg);
+        } else if (prefix("/file/", http_msg->uri.buf)) {
+            return root_file_handler(conn, http_msg);
         }
 
         if (mg_strcmp(http_msg->uri, mg_str("/")) == 0) {

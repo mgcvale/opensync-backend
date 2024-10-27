@@ -5,7 +5,9 @@
 #include "handler/handler.h"
 #include "migrate.c"
 #include "mongoose.h"
+#include "util/config.h"
 #include "service/database.h"
+#include "util/util.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -31,6 +33,9 @@ int main(int argc, char *argv[]) {
         printf("starting server...\n");
         rc = db_initialize("database.db", strlen("database.db"));
     }
+
+    load_from_file("./config.json");
+    initialize();
 
     if (rc != 0) {
         fprintf(stderr, "FATAL: Error initializing database! Exiting now...");
