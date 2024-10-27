@@ -15,6 +15,8 @@ add_executable(opensync-backend
     handler/handler.c
     handler/user_handler.h
     handler/user_handler.c
+    handler/file_handler.h
+    handler/file_handler.c
     handler/defaults.c
     handler/defaults.h
 
@@ -23,6 +25,8 @@ add_executable(opensync-backend
 
     model/user.h
     model/user.c
+    model/file.h
+    model/file.c
     model/crypt.h
     model/crypt.c
 
@@ -30,9 +34,13 @@ add_executable(opensync-backend
     service/database.h
     service/user_service.c
     service/user_service.h
+    service/file_service.c
+    service/file_service.h
 
     util/util.h
     util/util.c
+    util/config.h
+    util/config.c
 )
 
 target_link_libraries(opensync-backend ${SQLite3_LIBRARIES} ${CJSON_LIBRARIES} ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY} ${CURL_LIBRARIES})

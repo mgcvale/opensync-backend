@@ -97,15 +97,14 @@ User_list *user_list_create() {
     return list;
 }
 
-void user_list_append(User_list *list, User *user) {
+int user_list_append(User_list *list, User *user) {
     if (list == NULL) {
         fprintf(stderr, "failed to append user to null list. Call user_list_create() first.");
-        return;
+        return -1;
     }
     _user_node *new_node = user_node_create(user);
 
     if (new_node) {
-
         if (list->tail) { //list is not new;
             list->tail->next = new_node;
             list->tail = list->tail->next;
@@ -115,16 +114,32 @@ void user_list_append(User_list *list, User *user) {
         }
 
         list->count++;
+        return 0;
+    } else {
+        fprintf(stderr, "Error creating new user node in user_list_append().\n");
+        return -1;
     }
 }
 
 cJSON *jsonify_user(User *user) {
     cJSON *user_json = cJSON_CreateObject();
-    cJSON_AddNumberToObject(user_json, "id", user->id);
-    cJSON_AddStringToObject(user_json, "username", user->uname);
-    cJSON_AddStringToObject(user_json, "token", user->token);
+    if (user_json) {
+        cJSON_AddNumberToObject(user_json, "id", user->id);
+        cJSON_AddStringToObject(user_json, "username", user->uname);
+        cJSON_AddStringToObject(user_json, "token", user->token);
+    }
     return user_json;
 }
+
+char *to_json_string(User* user) {
+    char *json = calloc(1, 256);
+    if (json == NULL) {
+        return NULL;
+    }
+    snprintf(json, 256, "{\"id\": %d, \"username\": \"%s\", \"token\": \"%s\"}", user->id, user->uname, user->token);
+    return json;
+}
+
 
 cJSON *jsonify_list(User_list list) {
     cJSON *json = cJSON_CreateArray();
@@ -182,6 +197,3 @@ void free_User_list(User_list *list) {
     _free_user_node(list->head);
     free(list);
 }
-
-
-

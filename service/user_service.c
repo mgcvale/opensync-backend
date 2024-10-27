@@ -2,10 +2,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "user_service.h"
 #include "database.h"
 #include "crypt.h"
+#include "../util/config.h"
 
 int add_user(User *user) {
     const char *sql = "insert into user(username, token, password_hash, salt) values(?, ?, ?, ?)";
@@ -32,7 +34,7 @@ int add_user(User *user) {
 
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_CONSTRAINT) {
-        fprintf(stderr, "Failed to execute statement; UNIQUE constraint failed");
+        fprintf(stderr, "Failed to execute statement; UNIQUE constraint failed\n");
         sqlite3_finalize(stmt);
         sqlite3_close(db);
         return ERR_DB_CONFLICT;
@@ -44,6 +46,11 @@ int add_user(User *user) {
         return ERR_DB_INSERTION;
     }
 
+    char userdir[128];
+    snprintf(userdir, 128, "%s/%s", user_data_dir, user->uname);
+    if (mkdir(userdir, 0777) != 0) {
+        fprintf(stderr, "non-critical: failed to create user directory. It will be created when the first file is uploaded.\n");
+    }
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
