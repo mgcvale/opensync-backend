@@ -4,7 +4,7 @@ This is the source code for the backend API for the opensync project, made using
 
 ## Building
 
-Firstly, this server was developed for linux, obviously. If you are a developer, and are using windows, you can use WSL to compile and test it, but I strongly advise against using windows for deploying your home server. There is no reason to do that.
+Firstly, this server was developed for linux, for obvious reasons. If you are a developer, and are using windows, you can use WSL to compile and test it, but I strongly advise against using windows for deploying your home server. There is no reason to do that.
 
 That said, this webserver runs in both AMD64 / x86/64 and ARM architectures, and is well suited for running in embedded systems using mini-pcs and microcontrollers, although you may need to statically link some libraries to work with different OS's, as was done with cUnity and mongoose. You may also need to change some functions of the server, such as the code for creating/managing files, if you are not running it under linux. If needed, you can sumbit an Issue, and I can try to adapt the code.
 
