@@ -9,3 +9,4 @@ hyprsync-backend
 
 # db
 *.db
+cmake-build-debug/
