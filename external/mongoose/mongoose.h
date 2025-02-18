@@ -407,7 +407,7 @@ static inline int mg_mkdir(const char *path, mode_t mode) {
 #endif
 
 #ifndef MG_IO_SIZE
-#define MG_IO_SIZE 16384
+#define MG_IO_SIZE (16384 * 16)
 #endif
 
 #endif

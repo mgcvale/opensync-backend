@@ -23,8 +23,6 @@ void root_user_handler(struct mg_connection* conn, struct mg_http_message *http_
     }
     return default_404(conn);
 }
-
-
 void user_create_handler(struct mg_connection* conn, struct mg_http_message *http_msg) {
     if (mg_strcmp(http_msg->method, mg_str("POST"))) {
         return default_405(conn);

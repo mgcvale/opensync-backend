@@ -6,6 +6,7 @@
 #include "../service/user_service.h"
 #include "../service/file_service.h"
 #include "../service/database.h"
+#include "../util/config.h"
 #include <cjson/cJSON.h>
 
 void root_file_handler(struct mg_connection* conn, struct mg_http_message* http_msg) {
@@ -53,52 +54,62 @@ void file_create_handler(struct mg_connection* conn, struct mg_http_message* htt
     }
 
     char filename[256];
-    struct mg_http_part part;
     unsigned char *file_data = NULL;
-    size_t file_size = 0;
+    size_t fsize = 0;
     bool file_found = false;
 
     // Process each part of the multipart form
-    for (size_t ofs = 0; (ofs = mg_http_next_multipart(http_msg->body, ofs, &part)) > 0;) {
-        if (part.filename.len > 0) {  // This is a file
-            mg_snprintf(filename, sizeof(filename), "%.*s",
-                        (int) part.filename.len, part.filename.buf);
+    struct mg_http_part part;
+    size_t ofs = 0;
+    while ((ofs = mg_http_next_multipart(http_msg->body, ofs, &part)) > 0) {
+        MG_INFO(("Chunk name: [%.*s] filename: [%.*s] length: %lu bytes",
+                 (int) part.name.len, part.name.buf, (int) part.filename.len,
+                 part.filename.buf, part.body.len));
+
+        if (mg_strcmp(part.name, mg_str("file")) == 0) {
 
             file_data = malloc(part.body.len);
             if (file_data == NULL) {
-                free_user(user);
-                mg_http_reply(conn, 500, "Content-Type: application/json\r\n",
-                              "{\"error\":\"Memory allocation failed\"}\n");
-                return;
+                mg_http_reply(conn, 500,
+                              "Content-Type: application/json\r\n",
+                              "{\"error\": \"Error mallocating memory for upload file.\"}");
             }
-
-            // Copy file data
             memcpy(file_data, part.body.buf, part.body.len);
-            file_size = part.body.len;
+            fsize = part.body.len;
+
+            if (part.filename.len > 254) {
+                mg_http_reply(conn, 401,
+                              "Content-Type: application/json\r\n",
+                              "{\"error\": \"Filename too large\"}");
+            }
+            strncpy(filename, part.filename.buf, part.filename.len);
+            filename[part.filename.len] = '\0';
+
+            mg_log("Captured file %s, with length %lo", part.filename.buf, fsize);
+
             file_found = true;
-            break;  // only process the first file cuz yes
+             break; // process only one file for now
         }
     }
 
     // Validate file was found
-    if (!file_found || file_size == 0) {
+    if (!file_found || fsize == 0) {
         free_user(user);
+
         if (file_data != NULL) free(file_data);
         mg_http_reply(conn, 400, "Content-Type: application/json\r\n",
-                      "{\"error\":\"No file provided\"}\n");
+                      "{\"error\":\"No file or empty file provided\"}\n");
         return;
     }
 
-    int result = save_file(file_data, file_size, filename, user->uname);
+    int result = save_file(file_data, fsize, filename, user->uname);
     free(file_data);
     free_user(user);
 
     if (result != OK) {
-        MG_ERROR(("Result not ok here aaaa im starting to go insane"));
+        MG_ERROR(("Error saving file; code: %d", result));
         return default_500(conn);
     }
-
-    // TODO: add metadata to database
 
     return default_200(conn);
 }
@@ -110,6 +121,3 @@ void file_getall_handler(struct mg_connection* conn, struct mg_http_message* htt
 void file_get_by_id_handler(struct mg_connection* conn, struct mg_http_message* http_msg) {
 
 }
-
-
-
