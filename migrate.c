@@ -1,6 +1,8 @@
 #include <sqlite3.h>
 #include <stdio.h>
 
+
+int migrate(int argc, char *argv[]);
 int migrate(int argc, char *argv[]) {
     sqlite3 *db;
     char* err_msg = 0;
