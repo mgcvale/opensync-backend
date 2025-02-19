@@ -8,18 +8,18 @@
 #include "database.h"
 #include "crypt.h"
 #include "../util/config.h"
-/*
+#include "err.h"
+
 int add_user(User *user) {
     const char *sql = "insert into user(username, token, password_hash, salt) values(?, ?, ?, ?)";
     sqlite3_stmt *stmt;
-    int rc;
     sqlite3 *db = get_connection();
 
     if (db == NULL) {
         return ERR_DB_CREATION;
     }
 
-    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
 
     if (rc != SQLITE_OK) {
        fprintf(stderr, "failed to prepare statement: %s\n", sqlite3_errmsg(db));
@@ -28,8 +28,8 @@ int add_user(User *user) {
     }
 
     sqlite3_bind_text(stmt, 1, user->uname, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, user->token, strlen(user->token), SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 3, user->pwd_hash, strlen(user->pwd_hash), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, user->token, (int) strlen(user->token), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, user->pwd_hash, (int) strlen(user->pwd_hash), SQLITE_STATIC);
     sqlite3_bind_blob(stmt, 4, user->salt, sizeof(user->salt), SQLITE_STATIC);
 
     rc = sqlite3_step(stmt);
@@ -56,13 +56,11 @@ int add_user(User *user) {
 
     return OK;
 }
-*/
-/* Caller shouln't malloc User. It should be null) */
-/*
+
+/* Caller shouldn't malloc User. It should be null */
 int get_user_by_id(int userid, User **user) {
     const char sql[] = "select * from user where id=?";
     sqlite3_stmt *stmt;
-    int rc;
     sqlite3 *db = get_connection();
 
     if (db == NULL) {
@@ -70,7 +68,7 @@ int get_user_by_id(int userid, User **user) {
         return ERR_DB_CREATION;
     }
 
-    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
 
     if (rc != SQLITE_OK) {
         fprintf(stderr, "failed to prepare statement: %s\n", sqlite3_errmsg(db));
@@ -97,7 +95,7 @@ int get_user_by_id(int userid, User **user) {
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
-    (*user) = load_user(userid, username, strlen(username), pwd_hash, salt, token);
+    (*user) = load_user(userid, username, (int) strlen(username), pwd_hash, salt, token);
     if (*user == NULL) {
         fprintf(stderr, "Error constructing user from database query");
         return ERR_NULL_POINTER;
@@ -122,7 +120,7 @@ int auth_user_by_pwd(User **out, const char *uname, const char *pwd) {
         return ERR_DB_PREPARED_STMT;
     }
 
-    sqlite3_bind_text(stmt, 1, uname, strlen(uname), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, uname, (int) strlen(uname), SQLITE_STATIC);
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_DONE) {
         sqlite3_finalize(stmt);
@@ -151,7 +149,7 @@ int auth_user_by_pwd(User **out, const char *uname, const char *pwd) {
         return ERR_INVALID_CREDENTIALS;
     }
 
-    (*out) = load_user(id, username, strlen(username), pwd_hash, salt, token);
+    (*out) = load_user(id, username, (int) strlen(username), pwd_hash, salt, token);
     if (*out == NULL) {
         fprintf(stderr, "Error constructing user from database query");
         sqlite3_finalize(stmt);
@@ -180,7 +178,7 @@ int auth_user_by_token(User **user, const char *token) {
         return ERR_DB_PREPARED_STMT;
     }
 
-    sqlite3_bind_text(stmt, 1, token, strlen(token), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, token, (int) strlen(token), SQLITE_STATIC);
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_DONE) {
         sqlite3_finalize(stmt);
@@ -197,7 +195,7 @@ int auth_user_by_token(User **user, const char *token) {
     const char *pwd_hash = (char*) sqlite3_column_text(stmt, 2);
     const unsigned char *salt = (unsigned char*) sqlite3_column_blob(stmt, 3);
 
-    (*user) = load_user(id, username, strlen(username), pwd_hash, salt, token);
+    (*user) = load_user(id, username, (int) strlen(username), pwd_hash, salt, token);
     if (*user == NULL) {
         fprintf(stderr, "Error constructing user from database query");
         sqlite3_finalize(stmt);
@@ -227,7 +225,7 @@ int get_token_by_pwd(char* token, const char* uname, const char* pwd) { // assum
         return ERR_DB_PREPARED_STMT;
     }
 
-    sqlite3_bind_text(stmt, 1, uname, strlen(uname), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, uname, (int) strlen(uname), SQLITE_STATIC);
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_DONE) {
         sqlite3_finalize(stmt);
@@ -245,7 +243,7 @@ int get_token_by_pwd(char* token, const char* uname, const char* pwd) { // assum
 
     char hash[B64_ENCODED_LENGTH(SHA256_DIGEST_LENGTH)];
     hash_password(pwd, salt, hash, TOKEN_SIZE);
-    int b64_tokensize = b64_encoded_length(TOKEN_SIZE);
+    const size_t b64_tokensize = b64_encoded_length(TOKEN_SIZE);
 
     if (strncmp(hash, pwd_hash, b64_encoded_length(SHA256_DIGEST_LENGTH)) != 0) {
         fprintf(stderr, "Error authenticating user in auth_user_by_pwd: hashes don't match");
@@ -271,7 +269,6 @@ int get_token_by_pwd(char* token, const char* uname, const char* pwd) { // assum
 int remove_user_by_token(const char *token) {
     const char *sql = "delete from user where token=?";
     sqlite3_stmt *stmt;
-    int rc;
     sqlite3 *db = get_connection();
 
     if (db == NULL) {
@@ -279,15 +276,14 @@ int remove_user_by_token(const char *token) {
         return ERR_DB_CREATION;
     }
 
-    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
         fprintf(stderr, "failed to prepare statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return ERR_DB_PREPARED_STMT;
     }
 
-    sqlite3_bind_text(stmt, 1, token, strlen(token), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, token, (int) strlen(token), SQLITE_STATIC);
 
     rc = sqlite3_step(stmt);
     if (sqlite3_changes(db) == 0) {
@@ -306,13 +302,11 @@ int remove_user_by_token(const char *token) {
     sqlite3_close(db);
     return OK;
 }
-*/
+
 /* assume caller passes null userlist*/
-/*
 int get_users_as_list(User_list **userlist) {
     const char* sql = "select * from user";
     sqlite3_stmt *stmt;
-    int rc;
     sqlite3 *db = get_connection();
 
     if (db == NULL) {
@@ -320,8 +314,7 @@ int get_users_as_list(User_list **userlist) {
         return ERR_DB_CREATION;
     }
 
-    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if(rc != SQLITE_OK) {
         fprintf(stderr, "failed to prepare sql select statement (?): %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
@@ -347,7 +340,7 @@ int get_users_as_list(User_list **userlist) {
             continue;
         }
 
-        User *u = load_user(id, username, strlen(username), password_hash, salt, token);
+        User *u = load_user(id, username, (int) strlen(username), password_hash, salt, token);
         if (u) {
             user_list_append(*userlist, u);
         }
@@ -357,5 +350,3 @@ int get_users_as_list(User_list **userlist) {
 
     return OK;
 }
-
-*/

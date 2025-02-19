@@ -1,15 +1,14 @@
 #include "file_service.h"
 #include "database.h"
-#include "sqlite3.h"
 #include "../util/config.h"
-#include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <string.h>
-/*
-static bool _dir_exists(char *dir) {
+#include "err.h"
+
+static bool dir_exists(const char *dir) {
     DIR *d = opendir(dir);
     return (d != NULL);
 }
@@ -19,7 +18,7 @@ int save_file(const unsigned char* blob, size_t fsize, const char* fname, char *
     snprintf(file, 256, "%s/%s", user_data_dir, ownername);
 
     // create user dir if it doesn't exist
-    if (!_dir_exists(file)) {
+    if (!dir_exists(file)) {
         int rc = mkdir(file, 0777);
         if (rc != 0) {
             return ERR_NO_DIR_FOUND;
@@ -61,5 +60,3 @@ int load_file_metadata_to_db(const char* fname, size_t fsize, size_t ownerid, ch
 
     return OK;
 }
-
-*/
