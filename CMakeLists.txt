@@ -1,49 +1,55 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
+project(opensync C)
 
-project(opensync-backend LANGUAGES C)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
-find_package(PkgConfig REQUIRED)
-find_package(SQLite3 REQUIRED)
-find_package(cJSON REQUIRED)
-find_package(OpenSSL REQUIRED)
-
-add_library(mongoose STATIC external/mongoose/mongoose.c)
-
-add_executable(opensync-backend
-    main.c
-    handler/handler.h
-    handler/handler.c
-    handler/user_handler.h
-    handler/user_handler.c
-    handler/file_handler.h
-    handler/file_handler.c
-    handler/defaults.c
-    handler/defaults.h
-
-    external/mongoose/mongoose.c
-    external/mongoose/mongoose.h
-
-    model/user.h
-    model/user.c
-    model/file.h
-    model/file.c
-    model/crypt.h
-    model/crypt.c
-
-    service/database.c
-    service/database.h
-    service/user_service.c
-    service/user_service.h
-    service/file_service.c
-    service/file_service.h
-
-    util/util.h
-    util/util.c
-    util/config.h
-    util/config.c
+include_directories(
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/includes
+        /usr/local/include
+        /usr/local/share/kore/include
 )
 
-target_link_libraries(opensync-backend ${SQLite3_LIBRARIES} ${CJSON_LIBRARIES} ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY} ${CURL_LIBRARIES})
-target_include_directories(opensync-backend PRIVATE external/mongoose external/unity)
+find_package(OpenSSL REQUIRED)
+find_package(SQLite3 REQUIRED)
 
-install(TARGETS opensync-backend RUNTIME DESTINATION bin)
+file(GLOB_RECURSE SOURCES
+        "src/*.c"
+        "src/handler/*.c"
+        "src/model/*.c"
+        "src/service/*.c"
+        "src/util/*.c"
+)
+
+add_library(${PROJECT_NAME} SHARED ${SOURCES})
+
+target_compile_options(${PROJECT_NAME} PRIVATE
+        -Wall
+        -Wmissing-declarations
+        -Wshadow
+        -Wstrict-prototypes
+        -Wmissing-prototypes
+        -Wpointer-arith
+        -Wcast-qual
+        -Wsign-compare
+        -Werror
+        -pedantic
+        -fPIC
+        -DTLS_BACKEND_OPENSSL
+)
+
+target_link_libraries(${PROJECT_NAME}
+        OpenSSL::SSL
+        OpenSSL::Crypto
+        SQLite::SQLite3
+)
+
+set_source_files_properties(
+        ${CMAKE_SOURCE_DIR}/src/test/tests.c
+        ${CMAKE_SOURCE_DIR}/src/test/test_server.c
+        ${CMAKE_SOURCE_DIR}/src/test/test_util.c
+        PROPERTIES HEADER_FILE_ONLY TRUE
+)
+
+install(TARGETS opensync RUNTIME DESTINATION bin)
