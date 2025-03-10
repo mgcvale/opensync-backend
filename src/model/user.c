@@ -1,62 +1,60 @@
 #include "user.h"
+
+#include <err.h>
 #include <stdio.h>
 #include <string.h>
+#include <kore/kore.h>
+
 #include "crypt.h"
-/*
-User *load_user(int id, const char* uname, int s_uname, const char* pwd_hash, const unsigned char* salt, const char* token) {
-    User* user = malloc(sizeof(User)); // <- user.c:9
+#include "../lib/yyjson.h"
+
+
+User *load_user(int id, const char* uname, int s_uname, const char* pwd_hash, const char* token) {
+    User* user = malloc(sizeof(User));
     if (user == NULL) {
         fprintf(stderr, "Failed to allocate memory for user\n");
         return NULL;
     }
 
-    if (!pwd_hash || !token || !salt || !uname) {
+    if (!pwd_hash || !token || !uname) {
         fprintf(stderr, "Required fields were null in user load_user");
         free(user);
         return NULL;
     }
 
     user->id = id;
-    strncpy(user->uname, uname, MAX_USERNAME_LENGTH - 1);
-    user->uname[MAX_USERNAME_LENGTH - 1] = '\0';
+    strncpy(user->uname, uname, USERNAME_LENGTH - 1);
+    user->uname[USERNAME_LENGTH - 1] = '\0';
 
-    strncpy(user->pwd_hash, pwd_hash, B64_ENCODED_LENGTH(SHA256_DIGEST_LENGTH) - 1);
-    user->pwd_hash[B64_ENCODED_LENGTH(SHA256_DIGEST_LENGTH) - 1] = '\0';
+    strncpy(user->hash, pwd_hash, BCRYPT_HASH_LENGTH);
+    user->hash[USER_HASH_LENGTH - 1] = '\0';
 
-    strncpy(user->token, token, B64_ENCODED_LENGTH(TOKEN_SIZE) - 1);
+    strncpy(user->token, token, TOKEN_SIZE - 1);
     user->token[B64_ENCODED_LENGTH(TOKEN_SIZE) - 1] = '\0';
 
-    memcpy(user->salt, salt, TOKEN_SIZE);
     return user;
 }
 
 User *create_new_user(const char *uname, int s_uname, const char *pwd) {
-
-    // salt gen
-    unsigned char salt_blob[TOKEN_SIZE];
-
-    int code = gensalt_raw(salt_blob, TOKEN_SIZE);
-    if (code != 1) {
-        return NULL;
-    }
-
-    // hash gen (with generated salt)
-    char *hash = malloc(b64_encoded_length(SHA256_DIGEST_LENGTH));
-    code = hash_password(pwd, salt_blob, hash, TOKEN_SIZE);
+    // hash gen
+    char *hash = malloc(USER_HASH_LENGTH);
+    int code = hash_password(pwd, hash, USER_HASH_LENGTH);
     if (code != CRYPT_OK) {
+        kore_log(LOG_DEBUG, "Error hashing password for new user: %d", code);
         return NULL;
     }
 
     // generate token
     char *token = malloc(b64_encoded_length(TOKEN_SIZE) * sizeof(char));
     code = gentoken(token, TOKEN_SIZE);
-    if (code != 1) {
+    if (code != CRYPT_OK) {
+        kore_log(LOG_DEBUG, "Error generating token for new user: %d", code);
         free(hash);
         free(token);
         return NULL;
     }
 
-    User *u = load_user(-1, uname, s_uname, hash, salt_blob, token);
+    User *u = load_user(-1, uname, s_uname, hash, token);
     free(hash);
     free(token);
     return u;
@@ -91,6 +89,7 @@ User_list *user_list_create() {
         list->tail = NULL;
     } else {
         fprintf(stderr, "failed to allocate memory for new user list\n");
+        return NULL;
     }
     return list;
 }
@@ -119,40 +118,51 @@ int user_list_append(User_list *list, User *user) {
     }
 }
 
-cJSON *jsonify_user(User *user) {
-    cJSON *user_json = cJSON_CreateObject();
-    if (user_json) {
-        cJSON_AddNumberToObject(user_json, "id", user->id);
-        cJSON_AddStringToObject(user_json, "username", user->uname);
-        cJSON_AddStringToObject(user_json, "token", user->token);
-    }
-    return user_json;
-}
+/* caller must free json after use */
+static yyjson_doc *jsonify_user(const User *user) {
+    const char *json_str = "{\"id\": %d, \"username\": \"%s\", \"token\": \"%s\"}";
+    int len = snprintf(NULL, 0, json_str, user->id, user->uname, user->token);
 
-char *to_json_string(User* user) {
-    char *json = calloc(1, 256);
-    if (json == NULL) {
-        return NULL;
-    }
-    snprintf(json, 256, "{\"id\": %d, \"username\": \"%s\", \"token\": \"%s\"}", user->id, user->uname, user->token);
-    return json;
+    char *buffer = malloc(len + 1);
+    if (!buffer) return NULL;
+
+    snprintf(buffer, len + 1, json_str, user->id, user->uname, user->token);
+
+    yyjson_doc *doc = yyjson_read(buffer, len, 0);
+    free(buffer);
+
+    return doc;
 }
 
 
-cJSON *jsonify_list(User_list list) {
-    cJSON *json = cJSON_CreateArray();
+/* caller must free buffer after use */
+char *stringify_user(const User *user) {
+    yyjson_doc *doc = jsonify_user(user);
+
+    char *json_str = yyjson_write(doc, 0, NULL);
+    yyjson_doc_free(doc);
+    return json_str;
+}
+
+/* caller must free buffer after use */
+char *jsonify_list(const User_list list) {
+    yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+    yyjson_mut_val *root = yyjson_mut_arr(doc);
+    yyjson_mut_doc_set_root(doc, root);
 
     _user_node *current = list.head;
     while (current) {
-        cJSON_AddItemToArray(json, jsonify_user(current->user));
+        yyjson_mut_arr_add_obj(doc, yyjson_val_mut_copy(doc, yyjson_doc_get_root(jsonify_user(current->user))));
         current = current->next;
     }
 
+    char *json = yyjson_mut_write(doc, 0, NULL);
+    yyjson_mut_doc_free(doc);
     return json;
 }
 
 // O(n)
-User **to_user_array(User_list list, size_t *size) {
+User **to_user_array(const User_list list, size_t *size) {
     if (list.count == 0) {
         return NULL;
     }
@@ -179,7 +189,7 @@ User **to_user_array(User_list list, size_t *size) {
     return user_arr;
 }
 
-static void _free_user_node(_user_node *node) {
+static void free_user_node(_user_node *node) {
     while (node) {
         _user_node *next = node->next;
         free_user(node->user);
@@ -192,7 +202,6 @@ void free_User_list(User_list *list) {
     if (list == NULL) {
         return;
     }
-    _free_user_node(list->head);
+    free_user_node(list->head);
     free(list);
 }
-*/

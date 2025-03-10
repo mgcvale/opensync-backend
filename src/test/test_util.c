@@ -6,7 +6,7 @@
 const char url[64] = "http://localhost:8082/";
 
 size_t wCallback(void *contents, size_t size, size_t nmemb, void *userp) {
-    size_t total_size = size * nmemb;
+    const size_t total_size = size * nmemb;
     char *response = (char *)userp;
 
     if (strlen(response) + total_size + 1 >= RESPONSE_BUFFER_SIZE) {

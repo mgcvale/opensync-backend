@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Upload Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .upload-form {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .submit-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .submit-button:hover {
+            background-color: #45a049;
+        }
+        progress {
+            width: 100%;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+<h1>File Upload Demo</h1>
+<p>This form demonstrates uploading files directly to the server without buffering them in memory.</p>
+
+<div class="upload-form">
+    <form action="http://localhost:8083/upload" method="post" enctype="multipart/form-data">
+        <div>
+            <label for="file">Select a file to upload:</label>
+            <input type="file" id="file" name="file">
+        </div>
+        <div>
+            <button type="submit" class="submit-button">Upload File</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>

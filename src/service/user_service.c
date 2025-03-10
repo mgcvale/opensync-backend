@@ -5,13 +5,18 @@
 #include <sys/stat.h>
 
 #include "user_service.h"
+
+#include <kore/kore.h>
+#include <sys/syslog.h>
+
 #include "database.h"
 #include "crypt.h"
 #include "../util/config.h"
 #include "err.h"
 
 int add_user(User *user) {
-    const char *sql = "insert into user(username, token, password_hash, salt) values(?, ?, ?, ?)";
+    kore_log(LOG_INFO, "Addind user to database");
+    const char *sql = "insert into user(username, token, password_hash) values(?, ?, ?)";
     sqlite3_stmt *stmt;
     sqlite3 *db = get_connection();
 
@@ -28,9 +33,8 @@ int add_user(User *user) {
     }
 
     sqlite3_bind_text(stmt, 1, user->uname, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, user->token, (int) strlen(user->token), SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 3, user->pwd_hash, (int) strlen(user->pwd_hash), SQLITE_STATIC);
-    sqlite3_bind_blob(stmt, 4, user->salt, sizeof(user->salt), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, user->token, strlen(user->token), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, user->hash, strlen(user->hash), SQLITE_STATIC);
 
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_CONSTRAINT) {
@@ -46,8 +50,8 @@ int add_user(User *user) {
         return ERR_DB_INSERTION;
     }
 
-    char userdir[128];
-    snprintf(userdir, 128, "%s/%s", user_data_dir, user->uname);
+    char userdir[256];
+    snprintf(userdir, 256, "%s/%s", user_data_dir, user->uname);
     if (mkdir(userdir, 0777) != 0) {
         fprintf(stderr, "non-critical: failed to create user directory. It will be created when the first file is uploaded.\n");
     }
@@ -91,11 +95,10 @@ int get_user_by_id(int userid, User **user) {
     const char *username = (const char*) sqlite3_column_text(stmt, 1);
     const char *pwd_hash = (const char*) sqlite3_column_text(stmt, 2);
     const char *token = (const char*) sqlite3_column_text(stmt, 3);
-    const unsigned char *salt = sqlite3_column_blob(stmt, 4);
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
-    (*user) = load_user(userid, username, (int) strlen(username), pwd_hash, salt, token);
+    *user = load_user(userid, username, (int) strlen(username), pwd_hash, token);
     if (*user == NULL) {
         fprintf(stderr, "Error constructing user from database query");
         return ERR_NULL_POINTER;
@@ -133,14 +136,13 @@ int auth_user_by_pwd(User **out, const char *uname, const char *pwd) {
     }
 
     int id = sqlite3_column_int(stmt, 0);
-    const char *username = (char*) sqlite3_column_text(stmt, 1);
-    const char *pwd_hash = (char*) sqlite3_column_text(stmt, 2);
-    const char *token = (char*) sqlite3_column_text(stmt, 3);
-    const unsigned char *salt = (unsigned char*) sqlite3_column_blob(stmt, 4);
+    const char *username = (const char *) sqlite3_column_text(stmt, 1);
+    const char *pwd_hash = (const char *) sqlite3_column_text(stmt, 2);
+    const char *token = (const char *) sqlite3_column_text(stmt, 3);
 
     // before returning the found user, we need to check if hashing the password with the salt results in the same hash
-    char hash[B64_ENCODED_LENGTH(SHA256_DIGEST_LENGTH)];
-    hash_password(pwd, salt, hash, TOKEN_SIZE);
+    char hash[USER_HASH_LENGTH];
+    hash_password(pwd, hash, USER_HASH_LENGTH);
 
     if (strncmp(hash, pwd_hash, b64_encoded_length(SHA256_DIGEST_LENGTH)) != 0) {
         fprintf(stderr, "Error authenticating user in auth_user_by_pwd: hashes don't match");
@@ -149,7 +151,7 @@ int auth_user_by_pwd(User **out, const char *uname, const char *pwd) {
         return ERR_INVALID_CREDENTIALS;
     }
 
-    (*out) = load_user(id, username, (int) strlen(username), pwd_hash, salt, token);
+    (*out) = load_user(id, username, (int) strlen(username), pwd_hash, token);
     if (*out == NULL) {
         fprintf(stderr, "Error constructing user from database query");
         sqlite3_finalize(stmt);
@@ -169,7 +171,7 @@ int auth_user_by_token(User **user, const char *token) {
         return ERR_DB_CREATION;
     }
 
-    const char sql[] = "select id, username, password_hash, salt from user where token=?";
+    const char sql[] = "select id, username, password_hash from user where token=?";
     sqlite3_stmt *stmt;
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
@@ -178,7 +180,7 @@ int auth_user_by_token(User **user, const char *token) {
         return ERR_DB_PREPARED_STMT;
     }
 
-    sqlite3_bind_text(stmt, 1, token, (int) strlen(token), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, token, strlen(token), SQLITE_STATIC);
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_DONE) {
         sqlite3_finalize(stmt);
@@ -191,11 +193,10 @@ int auth_user_by_token(User **user, const char *token) {
     }
 
     int id = sqlite3_column_int(stmt, 0);
-    const char *username = (char*) sqlite3_column_text(stmt, 1);
-    const char *pwd_hash = (char*) sqlite3_column_text(stmt, 2);
-    const unsigned char *salt = (unsigned char*) sqlite3_column_blob(stmt, 3);
+    const char *username = (const char*) sqlite3_column_text(stmt, 1);
+    const char *pwd_hash = (const char*) sqlite3_column_text(stmt, 2);
 
-    (*user) = load_user(id, username, (int) strlen(username), pwd_hash, salt, token);
+    (*user) = load_user(id, username, (int) strlen(username), pwd_hash, token);
     if (*user == NULL) {
         fprintf(stderr, "Error constructing user from database query");
         sqlite3_finalize(stmt);
@@ -237,15 +238,14 @@ int get_token_by_pwd(char* token, const char* uname, const char* pwd) { // assum
         return ERR_DB_QUERY;
     }
 
-    const char *pwd_hash = (char*) sqlite3_column_text(stmt, 0);
-    const char *temp_token = (char*) sqlite3_column_text(stmt, 1);
-    const unsigned char *salt = (unsigned char*) sqlite3_column_blob(stmt, 2);
+    const char *pwd_hash = (const char*) sqlite3_column_text(stmt, 0);
+    const char *temp_token = (const char*) sqlite3_column_text(stmt, 1);
 
-    char hash[B64_ENCODED_LENGTH(SHA256_DIGEST_LENGTH)];
-    hash_password(pwd, salt, hash, TOKEN_SIZE);
+    char hash[USER_HASH_LENGTH];
+    hash_password(pwd, hash, USER_HASH_LENGTH);
     const size_t b64_tokensize = b64_encoded_length(TOKEN_SIZE);
 
-    if (strncmp(hash, pwd_hash, b64_encoded_length(SHA256_DIGEST_LENGTH)) != 0) {
+    if (strncmp(hash, pwd_hash, USER_HASH_LENGTH) != 0) {
         fprintf(stderr, "Error authenticating user in auth_user_by_pwd: hashes don't match");
         sqlite3_finalize(stmt);
         sqlite3_close(db);
@@ -330,7 +330,7 @@ int get_users_as_list(User_list **userlist) {
 
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         int id = sqlite3_column_int(stmt, 0);
-        const char *username = (const char *)sqlite3_column_text(stmt, 1);
+        const char *username = (const char *) sqlite3_column_text(stmt, 1);
         const char *password_hash = (const char *) sqlite3_column_text(stmt, 2);
         const char *token = (const char *) sqlite3_column_text(stmt, 3);
         const unsigned char *salt = sqlite3_column_blob(stmt, 4);
@@ -340,7 +340,7 @@ int get_users_as_list(User_list **userlist) {
             continue;
         }
 
-        User *u = load_user(id, username, (int) strlen(username), password_hash, salt, token);
+        User *u = load_user(id, username, (int) strlen(username), password_hash, token);
         if (u) {
             user_list_append(*userlist, u);
         }

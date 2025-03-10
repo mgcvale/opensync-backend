@@ -1,19 +1,18 @@
 #ifndef OPENSYNCOPENSYNC_USER_H
 #define OPENSYNCOPENSYNC_USER_H
 
-#include <cjson/cJSON.h>
 #include <stdlib.h>
 #include "crypt.h"
 
-#define MAX_USERNAME_LENGTH 64
+#define USERNAME_LENGTH 64
+#define USER_HASH_LENGTH BCRYPT_HASH_LENGTH
 #define TOKEN_SIZE 16
 
 typedef struct {
     int id;
-    char uname[MAX_USERNAME_LENGTH];
-    char pwd_hash[B64_ENCODED_LENGTH(SHA256_DIGEST_LENGTH)];
+    char uname[USERNAME_LENGTH];
+    char hash[USER_HASH_LENGTH];
     char token[B64_ENCODED_LENGTH(TOKEN_SIZE)];
-    char salt[TOKEN_SIZE];
 } User;
 
 typedef struct _user_node{
@@ -28,14 +27,14 @@ typedef struct {
 } User_list;
 
 User* create_new_user(const char *uname, int s_uname, const char *pwd);
-User* load_user(int id, const char *uname, int s_uname, const char *pwd_hash, const unsigned char *salt, const char *token);
+User* load_user(int id, const char *uname, int s_uname, const char *hash, const char *token);
 void free_user(User *user);
 
 User_list *user_list_create(void);
 int user_list_append(User_list *list, User *user);
 User **to_user_array(User_list list, size_t *size);
-cJSON *jsonify_user(User *user);
-cJSON *jsonify_list(User_list list);
+char *stringify_user(const User *user);
+char *jsonify_list(User_list list);
 char *to_json_string(User *user);
 void free_User_list(User_list *list);
 #endif

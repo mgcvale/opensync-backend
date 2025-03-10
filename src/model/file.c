@@ -56,7 +56,7 @@ void free_fileMetadata(FileMetadata *fmdat) {
 
 // file list stuff
 
-static _file_node *_file_node_create(FileMetadata *fmdat) {
+static _file_node *file_node_create(FileMetadata *fmdat) {
     _file_node *node = malloc(sizeof(_file_node));
     if (!node) {
         fprintf(stderr, "failed to allocate memory for new user node\n");
@@ -91,7 +91,7 @@ int fileMetadataList_append(FileMetadataList *list, FileMetadata *fmdat) {
         fprintf(stderr, "Failed to append null FileMetadata to list. call create_new_fileMetadata() or load_fileMetadata() first.\n");
     }
 
-    _file_node *new_node = _file_node_create(fmdat);
+    _file_node *new_node = file_node_create(fmdat);
 
     if (new_node) {
         if (list->tail) { // list is not new
@@ -132,8 +132,8 @@ cJSON * jsonify_fileMetadataList(FileMetadataList list) {
     }
 
     return json;
-}
-*/
+}*/
+
 // O(n)
 FileMetadata ** to_fileMetadata_array(FileMetadataList list, size_t* size) {
     if (list.count == 0) {
@@ -162,7 +162,7 @@ FileMetadata ** to_fileMetadata_array(FileMetadataList list, size_t* size) {
     return fmdat_arr;
 }
 
-static void _free_file_node(_file_node *node) {
+static void free_file_node(_file_node *node) {
     while (node) {
         _file_node *next = node->next;
         free_fileMetadata(node->fmdat);
@@ -176,6 +176,6 @@ void free_fileMetadataList(FileMetadataList* list) {
         return;
     }
 
-    _free_file_node(list->head);
+    free_file_node(list->head);
     free(list);
 }

@@ -37,6 +37,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE
         -pedantic
         -fPIC
         -DTLS_BACKEND_OPENSSL
+        -std=c11
 )
 
 target_link_libraries(${PROJECT_NAME}
